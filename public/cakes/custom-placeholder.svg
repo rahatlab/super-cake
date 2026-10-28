@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900">
+  <defs><linearGradient id="cp" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#ffd9e4"/><stop offset="100%" stop-color="#ffe9c7"/>
+  </linearGradient></defs>
+  <rect width="900" height="900" fill="url(#cp)"/>
+  <text x="450" y="470" text-anchor="middle" font-family="Segoe UI Emoji, sans-serif" font-size="180">🍰</text>
+  <text x="450" y="620" text-anchor="middle" font-family="Segoe UI, Helvetica, sans-serif" font-size="46" font-weight="700" fill="#9b4a63">Custom Cake</text>
+</svg>
