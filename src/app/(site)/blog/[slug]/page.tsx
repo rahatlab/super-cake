@@ -106,7 +106,6 @@ export default async function BlogPostPage({ params }: Ctx) {
             priority
             sizes="(max-width: 896px) 100vw, 896px"
             className="object-cover"
-            unoptimized
           />
         </div>
       )}
@@ -142,7 +141,6 @@ export default async function BlogPostPage({ params }: Ctx) {
                       fill
                       sizes="33vw"
                       className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      unoptimized
                     />
                   )}
                 </div>

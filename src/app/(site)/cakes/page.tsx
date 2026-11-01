@@ -6,6 +6,8 @@ import { CakeCard } from "@/components/cake-card";
 import { CatalogFilters } from "@/components/catalog-filters";
 import { breadcrumbLd, ldJson } from "@/lib/seo";
 import { Suspense } from "react";
+export const revalidate = 180; // Revalidate every 3 minutes
+
 
 export const metadata: Metadata = {
   title: "সব কেক — Custom & Birthday Cakes",
@@ -34,9 +36,9 @@ export default async function CakesPage({
 }) {
   const sp = await searchParams;
   const store = getStore();
-  const [cakes, reviews, settings] = await Promise.all([
+  const [cakes, ratings, settings] = await Promise.all([
     store.listCakes(),
-    store.listReviews({ approvedOnly: true }),
+    store.getCakeRatings(),
     store.getSettings(),
   ]);
 
@@ -55,19 +57,13 @@ export default async function CakesPage({
   if (occasion) list = list.filter((c) => c.occasions.includes(occasion as never));
   if (category) list = list.filter((c) => c.category === category);
 
-  const ratingMap = new Map<string, { total: number; count: number }>();
-  for (const r of reviews) {
-    if (!r.cake_slug) continue;
-    const cur = ratingMap.get(r.cake_slug) ?? { total: 0, count: 0 };
-    cur.total += r.rating;
-    cur.count += 1;
-    ratingMap.set(r.cake_slug, cur);
-  }
+  const ratingMap = new Map(ratings.map((r) => [r.cake_slug, r]));
 
   list = [...list].sort((a, b) => {
     const ra = ratingMap.get(a.slug);
     const rb = ratingMap.get(b.slug);
-    const score = (r?: { total: number; count: number }) => (r && r.count ? r.total / r.count : 0);
+    const score = (r?: { average_rating: number; review_count: number }) =>
+      (r && r.review_count ? r.average_rating : 0);
     if (sort === "price_low") return a.base_price - b.base_price;
     if (sort === "price_high") return b.base_price - a.base_price;
     if (sort === "rating") return score(rb) - score(ra);
@@ -146,8 +142,8 @@ export default async function CakesPage({
               <CakeCard
                 key={cake.id}
                 cake={cake}
-                rating={stat ? stat.total / stat.count : undefined}
-                reviewCount={stat?.count ?? 0}
+                rating={stat?.average_rating}
+                reviewCount={stat?.review_count ?? 0}
               />
             );
           })}

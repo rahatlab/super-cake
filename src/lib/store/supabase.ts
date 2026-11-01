@@ -560,6 +560,30 @@ export const supabaseStore: Store = {
     if (error) err(error);
     return (data ?? []) as Review[];
   },
+  async getCakeRatings() {
+    const { data, error } = await db()
+      .from("reviews")
+      .select("cake_slug, rating")
+      .eq("is_approved", true)
+      .not("cake_slug", "is", null);
+
+    if (error) err(error);
+
+    const ratingMap = new Map<string, { total: number; count: number }>();
+    for (const r of (data ?? [])) {
+      const slug = r.cake_slug as string;
+      const cur = ratingMap.get(slug) ?? { total: 0, count: 0 };
+      cur.total += r.rating;
+      cur.count += 1;
+      ratingMap.set(slug, cur);
+    }
+
+    return Array.from(ratingMap.entries()).map(([cake_slug, stats]) => ({
+      cake_slug,
+      average_rating: stats.total / stats.count,
+      review_count: stats.count,
+    }));
+  },
   async getReviewByOrder(orderId) {
     const { data, error } = await db().from("reviews").select("*").eq("order_id", orderId).maybeSingle();
     if (error) err(error);

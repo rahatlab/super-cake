@@ -656,6 +656,25 @@ export const localStore: Store = {
     const rows = opts?.approvedOnly ? db.reviews.filter((r) => r.is_approved) : db.reviews;
     return [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at));
   },
+  async getCakeRatings() {
+    const db = await load();
+    const approved = db.reviews.filter((r) => r.is_approved && r.cake_slug);
+
+    const ratingMap = new Map<string, { total: number; count: number }>();
+    for (const r of approved) {
+      const slug = r.cake_slug!;
+      const cur = ratingMap.get(slug) ?? { total: 0, count: 0 };
+      cur.total += r.rating;
+      cur.count += 1;
+      ratingMap.set(slug, cur);
+    }
+
+    return Array.from(ratingMap.entries()).map(([cake_slug, stats]) => ({
+      cake_slug,
+      average_rating: stats.total / stats.count,
+      review_count: stats.count,
+    }));
+  },
   async getReviewByOrder(orderId) {
     const db = await load();
     return db.reviews.find((r) => r.order_id === orderId) ?? null;

@@ -183,7 +183,6 @@ export function PostForm({ post }: { post?: BlogPost }) {
 
           {cover ? (
             <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-line bg-brand/10">
-              <Image src={cover} alt="কভার প্রিভিউ" fill sizes="400px" className="object-cover" unoptimized />
               <button
                 type="button"
                 onClick={() => setCover("")}

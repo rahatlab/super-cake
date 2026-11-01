@@ -3,6 +3,7 @@ import { Hind_Siliguri, Noto_Sans_Bengali } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CartProvider } from "@/components/cart/cart-context";
+import { NavigationProgress } from "@/components/navigation-progress";
 import { SITE } from "@/lib/constants";
 
 const body = Noto_Sans_Bengali({
@@ -74,7 +75,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="bn" suppressHydrationWarning className={`${body.variable} ${display.variable} h-full antialiased`}>
       <body className="flex min-h-screen flex-col">
         <ThemeProvider>
-          <CartProvider>{children}</CartProvider>
+          <CartProvider>
+            <NavigationProgress />
+            {children}
+          </CartProvider>
         </ThemeProvider>
       </body>
     </html>

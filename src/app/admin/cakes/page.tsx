@@ -75,7 +75,6 @@ export default async function AdminCakesPage() {
                               fill
                               sizes="48px"
                               className="object-cover"
-                              unoptimized
                             />
                           )}
                         </span>

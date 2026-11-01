@@ -277,7 +277,6 @@ export function CakeForm({ cake }: { cake?: Cake }) {
                   <Image
                     src={url}
                     alt="কেকের ছবি"
-                    unoptimized
                     width={96}
                     height={96}
                     className="h-24 w-24 rounded-xl border border-line object-cover"

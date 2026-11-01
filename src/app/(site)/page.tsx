@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { ArrowRight, CakeSlice, Clock, Headphones, ShieldCheck, Truck } from "lucide-react";
+import { Suspense } from "react";
 import { getStore } from "@/lib/store";
 import { OCCASIONS, SITE } from "@/lib/constants";
 import { waLink } from "@/lib/utils";
@@ -11,6 +12,8 @@ import { OfferBanner } from "@/components/home/offer-banner";
 import { Testimonials } from "@/components/home/testimonials";
 import { CakeCard } from "@/components/cake-card";
 import { Reveal } from "@/components/reveal";
+
+export const revalidate = 300; // Revalidate every 5 minutes
 
 export const metadata: Metadata = {
   title: `${SITE.name} — ${SITE.tagline}`,
@@ -31,28 +34,135 @@ const FEATURES = [
   { icon: Truck, title: "Track Your Order", desc: "অর্ডার আইডি দিয়ে লাইভ স্ট্যাটাস দেখুন" },
 ];
 
-export default async function HomePage() {
+// Skeleton components for progressive loading
+function FeaturedCakesSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 8 }).map((_, i) => (
+        <div key={i} className="card overflow-hidden animate-pulse">
+          <div className="skeleton aspect-square w-full" />
+          <div className="p-4 space-y-3">
+            <div className="skeleton h-4 w-3/4" />
+            <div className="skeleton h-3 w-1/2" />
+            <div className="skeleton h-8 w-full mt-3" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TestimonialsSkeleton() {
+  return (
+    <div className="container-page py-14">
+      <div className="skeleton h-8 w-48 mb-6" />
+      <div className="grid gap-5 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="card p-6 animate-pulse">
+            <div className="skeleton h-20 w-full mb-3" />
+            <div className="skeleton h-4 w-full mb-2" />
+            <div className="skeleton h-4 w-3/4" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Separate async components for progressive loading
+async function FeaturedCakes() {
   const store = getStore();
-  const [settings, cakes, banners, reviews, posts] = await Promise.all([
-    store.getSettings(),
+  const [cakes, ratings] = await Promise.all([
     store.listCakes(),
-    store.listBanners({ activeOnly: true }),
-    store.listReviews({ approvedOnly: true }),
-    store.listPosts({ publishedOnly: true }),
+    store.getCakeRatings(),
   ]);
 
   const featured = cakes.filter((c) => c.is_featured).slice(0, 8);
   const shown = (featured.length ? featured : cakes).slice(0, 8);
 
-  const ratingMap = new Map<string, { total: number; count: number }>();
-  for (const r of reviews) {
-    if (!r.cake_slug) continue;
-    const cur = ratingMap.get(r.cake_slug) ?? { total: 0, count: 0 };
-    cur.total += r.rating;
-    cur.count += 1;
-    ratingMap.set(r.cake_slug, cur);
-  }
+  const ratingMap = new Map(ratings.map((r) => [r.cake_slug, r]));
 
+  return (
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      {shown.map((cake, i) => {
+        const stat = ratingMap.get(cake.slug);
+        return (
+          <Reveal key={cake.id} delay={i * 0.05}>
+            <CakeCard
+              cake={cake}
+              rating={stat?.average_rating}
+              reviewCount={stat?.review_count ?? 0}
+            />
+          </Reveal>
+        );
+      })}
+    </div>
+  );
+}
+
+async function TestimonialsSection() {
+  const store = getStore();
+  const reviews = await store.listReviews({ approvedOnly: true });
+  return <Testimonials reviews={reviews.slice(0, 6)} />;
+}
+
+async function BlogPreview() {
+  const store = getStore();
+  const posts = await store.listPosts({ publishedOnly: true });
+
+  if (posts.length === 0) return null;
+
+  return (
+    <section className="container-page py-14">
+      <Reveal className="mb-7 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <span className="badge bg-brand/12 text-brand-strong">Blog</span>
+          <h2 className="mt-3 text-3xl font-extrabold">মিষ্টি খবর ও টিপস</h2>
+        </div>
+        <Link href="/blog" className="btn btn-ghost btn-sm group">
+          সব পোস্ট <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+        </Link>
+      </Reveal>
+
+      <div className="grid gap-5 md:grid-cols-3">
+        {posts.slice(0, 3).map((p, i) => (
+          <Reveal key={p.id} delay={i * 0.08}>
+            <Link href={`/blog/${p.slug}`} className="card group block h-full overflow-hidden">
+              <div className="relative aspect-[16/9] overflow-hidden bg-brand/8">
+                {p.cover_image && (
+                  <Image
+                    src={p.cover_image}
+                    alt={p.title}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                )}
+              </div>
+              <div className="p-5">
+                <h3 className="line-clamp-2 text-[15px] font-bold transition-colors group-hover:text-brand-strong">
+                  {p.title}
+                </h3>
+                <p className="mt-2 line-clamp-2 text-[13px] text-muted">{p.excerpt}</p>
+              </div>
+            </Link>
+          </Reveal>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export default async function HomePage() {
+  const store = getStore();
+  // Only fetch critical data for initial render
+  const [settings, banners] = await Promise.all([
+    store.getSettings(),
+    store.listBanners({ activeOnly: true }),
+  ]);
+
+  // Calculate reviews stats for hero
+  const reviews = await store.listReviews({ approvedOnly: true });
   const avgAll = reviews.length
     ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10
     : 0;
@@ -68,6 +178,7 @@ export default async function HomePage() {
         }}
       />
 
+      {/* Critical content - loads immediately */}
       <OfferBanner banner={banners[0] ?? null} />
       <Hero whatsapp={wa} rating={avgAll} reviewCount={reviews.length} />
 
@@ -86,7 +197,7 @@ export default async function HomePage() {
         </Reveal>
       </section>
 
-      {/* featured cakes */}
+      {/* featured cakes - Progressive loading */}
       <section className="container-page py-12">
         <Reveal className="mb-7 flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -103,20 +214,9 @@ export default async function HomePage() {
           </Link>
         </Reveal>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          {shown.map((cake, i) => {
-            const stat = ratingMap.get(cake.slug);
-            return (
-              <Reveal key={cake.id} delay={i * 0.05}>
-                <CakeCard
-                  cake={cake}
-                  rating={stat ? stat.total / stat.count : undefined}
-                  reviewCount={stat?.count ?? 0}
-                />
-              </Reveal>
-            );
-          })}
-        </div>
+        <Suspense fallback={<FeaturedCakesSkeleton />}>
+          <FeaturedCakes />
+        </Suspense>
       </section>
 
       {/* how it works */}
@@ -205,7 +305,6 @@ export default async function HomePage() {
                   fill
                   sizes="320px"
                   className="rounded-2xl object-cover shadow-lift"
-                  unoptimized
                 />
               </div>
             </div>
@@ -213,51 +312,17 @@ export default async function HomePage() {
         </Reveal>
       </section>
 
-      <Testimonials reviews={reviews.slice(0, 6)} />
+      {/* Testimonials - Progressive loading */}
+      <Suspense fallback={<TestimonialsSkeleton />}>
+        <TestimonialsSection />
+      </Suspense>
 
-      {/* blog preview */}
-      {posts.length > 0 && (
-        <section className="container-page py-14">
-          <Reveal className="mb-7 flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <span className="badge bg-brand/12 text-brand-strong">Blog</span>
-              <h2 className="mt-3 text-3xl font-extrabold">মিষ্টি খবর ও টিপস</h2>
-            </div>
-            <Link href="/blog" className="btn btn-ghost btn-sm group">
-              সব পোস্ট <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Link>
-          </Reveal>
+      {/* Blog preview - Progressive loading (lowest priority) */}
+      <Suspense fallback={null}>
+        <BlogPreview />
+      </Suspense>
 
-          <div className="grid gap-5 md:grid-cols-3">
-            {posts.slice(0, 3).map((p, i) => (
-              <Reveal key={p.id} delay={i * 0.08}>
-                <Link href={`/blog/${p.slug}`} className="card group block h-full overflow-hidden">
-                  <div className="relative aspect-[16/9] overflow-hidden bg-brand/8">
-                    {p.cover_image && (
-                      <Image
-                        src={p.cover_image}
-                        alt={p.title}
-                        fill
-                        sizes="(max-width: 768px) 100vw, 33vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                        unoptimized
-                      />
-                    )}
-                  </div>
-                  <div className="p-5">
-                    <h3 className="line-clamp-2 text-[15px] font-bold transition-colors group-hover:text-brand-strong">
-                      {p.title}
-                    </h3>
-                    <p className="mt-2 line-clamp-2 text-[13px] text-muted">{p.excerpt}</p>
-                  </div>
-                </Link>
-              </Reveal>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* rating summary JSON-LD for the shop — only with real, approved reviews */}
+      {/* SEO structured data */}
       {reviews.length > 0 && (
         <script
           type="application/ld+json"
@@ -272,12 +337,6 @@ export default async function HomePage() {
               worstRating: 1,
             }),
           }}
-        />
-      )}
-      {shown[0] && (
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: ldJson(productLd(shown[0], reviews, settings)) }}
         />
       )}
     </>

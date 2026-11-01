@@ -74,7 +74,6 @@ export default async function AdminBlogPage() {
                             fill
                             sizes="64px"
                             className="object-cover"
-                            unoptimized
                           />
                         ) : (
                           <span className="grid h-full w-full place-items-center text-lg" aria-hidden>

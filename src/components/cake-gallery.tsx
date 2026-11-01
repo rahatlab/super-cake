@@ -47,7 +47,6 @@ export function CakeGallery({ images, name }: { images: string[]; name: string }
               priority
               sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover transition-transform duration-500 group-hover:scale-[1.15]"
-              unoptimized
             />
           </motion.div>
         </AnimatePresence>
@@ -91,7 +90,6 @@ export function CakeGallery({ images, name }: { images: string[]; name: string }
                 i === index ? "border-brand opacity-100" : "border-transparent opacity-60 hover:opacity-100"
               }`}
             >
-              <Image src={src} alt="" fill sizes="64px" className="object-cover" unoptimized />
             </button>
           ))}
         </div>
@@ -131,7 +129,6 @@ export function CakeGallery({ images, name }: { images: string[]; name: string }
                 fill
                 sizes="100vw"
                 className="rounded-2xl object-contain"
-                unoptimized
               />
             </motion.div>
 

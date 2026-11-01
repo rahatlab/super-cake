@@ -60,6 +60,7 @@ export function Header({ user }: { user: { name: string; role: string } | null }
               <Link
                 key={n.href}
                 href={n.href}
+                prefetch={true}
                 className={`relative rounded-full px-3.5 py-2 text-sm font-semibold transition-colors ${
                   active ? "text-brand-strong" : "text-muted hover:text-fg"
                 }`}
@@ -149,6 +150,7 @@ export function Header({ user }: { user: { name: string; role: string } | null }
                 >
                   <Link
                     href={n.href}
+                    prefetch={true}
                     onClick={() => setMenuOpen(false)}
                     className={`block rounded-xl px-3 py-2.5 text-sm font-semibold ${
                       pathname === n.href ? "bg-brand/12 text-brand-strong" : "text-muted hover:bg-fg/5"

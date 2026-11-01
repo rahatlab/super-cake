@@ -68,9 +68,7 @@ export function CartDrawer() {
                       className="flex gap-3 rounded-2xl border border-line bg-bg p-3"
                     >
                       <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-brand/10">
-                        {it.image && (
-                          <Image src={it.image} alt={it.name} fill sizes="64px" className="object-cover" unoptimized />
-                        )}
+                        {it.image && <Image src={it.image} alt={it.name} fill sizes="64px" className="object-cover" />}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold">{it.name}</p>

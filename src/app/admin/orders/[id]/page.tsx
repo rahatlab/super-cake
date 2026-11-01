@@ -159,7 +159,6 @@ export default async function AdminOrderDetailPage({
                                 fill
                                 sizes="40px"
                                 className="object-cover"
-                                unoptimized
                               />
                             </span>
                           )}

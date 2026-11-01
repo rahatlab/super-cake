@@ -48,6 +48,12 @@ export interface StockLine {
   quantity: number;
 }
 
+export interface CakeRating {
+  cake_slug: string;
+  average_rating: number;
+  review_count: number;
+}
+
 export interface Store {
   /* settings */
   getSettings(): Promise<Settings>;
@@ -137,6 +143,7 @@ export interface Store {
 
   /* reviews */
   listReviews(opts?: { approvedOnly?: boolean }): Promise<Review[]>;
+  getCakeRatings(): Promise<CakeRating[]>;
   getReviewByOrder(orderId: string): Promise<Review | null>;
   createReview(data: Omit<Review, "id" | "created_at" | "is_approved">): Promise<Review>;
   updateReview(id: string, patch: Partial<Review>): Promise<Review>;

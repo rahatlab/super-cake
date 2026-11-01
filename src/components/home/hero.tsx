@@ -157,7 +157,6 @@ export function Hero({
                 priority
                 sizes="(max-width: 1024px) 90vw, 440px"
                 className="object-cover"
-                unoptimized
               />
             </div>
 
