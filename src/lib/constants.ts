@@ -17,7 +17,7 @@ export const SITE = {
 
 export const OCCASIONS: { value: Occasion; label: string; bn: string; emoji: string; hint: string }[] = [
   { value: "birthday", label: "Birthday", bn: "জন্মদিন", emoji: "🎂", hint: "Happy Birthday cakes" },
-  { value: "anniversary", label: "Anniversary", bn: "বার্ষিকী", emoji: "💍", hint: "Romantic anniversary cakes" },
+  { value: "anniversary", label: "Anniversary", bn: "বিবাহ বার্ষিকী", emoji: "💍", hint: "Romantic anniversary cakes" },
   { value: "occasion", label: "Occasion", bn: "অনুষ্ঠান", emoji: "🎉", hint: "Eid, success, milestones" },
   { value: "gift", label: "Gift", bn: "উপহার", emoji: "🎁", hint: "Surprise someone special" },
   { value: "others", label: "Others", bn: "অন্যান্য", emoji: "✨", hint: "Anything else" },
@@ -71,6 +71,7 @@ export const CATEGORIES = [
   "Black Forest",
   "Fruit",
   "Cheesecake",
+  "Cup Cake",
   "Custom",
 ];
 
