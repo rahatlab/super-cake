@@ -1,11 +1,10 @@
 import type { MetadataRoute } from "next";
-import { getStore } from "@/lib/store";
+import { listCachedCakes, listCachedPosts } from "@/lib/store/cache";
 import { SITE } from "@/lib/constants";
 
 const NOW = new Date();
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const store = getStore();
 
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: SITE.url, lastModified: NOW, changeFrequency: "daily", priority: 1 },
@@ -19,10 +18,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   try {
-    const [cakes, posts] = await Promise.all([
-      store.listCakes(),
-      store.listPosts({ publishedOnly: true }),
-    ]);
+    const [cakes, posts] = await Promise.all([listCachedCakes(), listCachedPosts(true)]);
 
     const cakeRoutes: MetadataRoute.Sitemap = cakes.map((c) => ({
       url: `${SITE.url}/cakes/${c.slug}`,

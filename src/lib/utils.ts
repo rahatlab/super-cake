@@ -11,6 +11,12 @@ export function nowMs(): number {
   return Date.now();
 }
 
+/** Clamp a `?page=` search param to a 1-based integer page number. */
+export function parsePageParam(raw: string | string[] | undefined): number {
+  const n = Number.parseInt(Array.isArray(raw) ? raw[0] : (raw ?? ""), 10);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
 /** Format amount as Bangladeshi Taka: 1200 -> ৳1,200 */
 export function formatBDT(amount: number): string {
   return "৳" + new Intl.NumberFormat("en-BD", { maximumFractionDigits: 0 }).format(Math.round(amount));
@@ -29,6 +35,42 @@ export function slugify(text: string): string {
     .replace(/[^\w\s-]/g, "")
     .replace(/[\s_-]+/g, "-")
     .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * URL slug base for an arbitrary name.
+ *
+ * `slugify` strips everything non-ASCII, so a purely Bengali name ("চকলেট
+ * কেক") yields an empty string — which would collide on every insert. Those
+ * names fall back to a short stable hash of the text instead: deterministic,
+ * so retries and re-saves derive the same base.
+ */
+export function slugBase(text: string, prefix = "item"): string {
+  const base = slugify(text);
+  if (base) return base;
+
+  let hash = 5381;
+  const trimmed = text.trim();
+  for (let i = 0; i < trimmed.length; i++) {
+    hash = ((hash << 5) + hash + trimmed.charCodeAt(i)) >>> 0;
+  }
+  return `${prefix}-${hash.toString(36)}`;
+}
+
+/**
+ * First free slug: `base`, `base-2`, `base-3`, ...
+ *
+ * Shared by the local and Supabase stores so both reproduce the production
+ * UNIQUE index (`cakes_slug_key`, `blog_posts_slug_key`) instead of surfacing
+ * the raw constraint error in the admin UI.
+ */
+export function pickUniqueSlug(base: string, taken: Iterable<string>): string {
+  const used = new Set(taken);
+  if (!used.has(base)) return base;
+
+  let n = 2;
+  while (used.has(`${base}-${n}`)) n += 1;
+  return `${base}-${n}`;
 }
 
 /* ---------------- timezone-safe helpers (Asia/Dhaka) ---------------- */
@@ -169,15 +211,23 @@ export function waLink(phone: string, message: string): string {
   return `https://wa.me/${p}?text=${encodeURIComponent(message)}`;
 }
 
-export function orderStatusMessage(orderNo: string, status: string, store = "Super Cake"): string {
+/**
+ * Status-specific headline for one order (no store prefix), used both as the
+ * WhatsApp summary headline and as the single-line template fallback.
+ */
+export function orderStatusHeadline(orderNo: string, status: string): string {
   const map: Record<string, string> = {
-    pending: `আপনার অর্ডার (${orderNo}) পেয়েছি। শীঘ্রই নিশ্চিত করবো। 🎂`,
-    confirmed: `আপনার অর্ডার (${orderNo}) নিশ্চিত হয়েছে ✅ আমরা তৈরি শুরু করছি।`,
-    baking: `আপনার কেক (${orderNo}) এখন তৈরি হচ্ছে 🍰`,
-    out_for_delivery: `আপনার কেক (${orderNo}) ডেলিভারির পথে 🚗`,
-    delivered: `আপনার কেক (${orderNo}) পৌঁছে গেছে 🎉 খুশির মুহূর্ত উপভোগ করুন!`,
-    completed: `অর্ডার (${orderNo}) সম্পন্ন 🌟 আপনার রিভিউ দিতে ভুলবেন না!`,
+    pending: `আপনার অর্ডার (${orderNo}) পেয়েছি। শীঘ্রই নিশ্চিত করব।`,
+    confirmed: `আপনার অর্ডার (${orderNo}) নিশ্চিত হয়েছে। আমরা তৈরি শুরু করছি।`,
+    baking: `আপনার কেক (${orderNo}) এখন তৈরি হচ্ছে।`,
+    out_for_delivery: `আপনার কেক (${orderNo}) ডেলিভারির পথে।`,
+    delivered: `আপনার কেক (${orderNo}) পৌঁছে গেছে। খুশির মুহূর্তটি উপভোগ করুন!`,
+    completed: `অর্ডার (${orderNo}) সম্পন্ন হয়েছে। আপনার অভিজ্ঞতা জানিয়ে একটি রিভিউ দিন।`,
     cancelled: `দুঃখিত, অর্ডার (${orderNo}) বাতিল করা হয়েছে।`,
   };
-  return `${store}: ${map[status] ?? status}`;
+  return map[status] ?? status;
+}
+
+export function orderStatusMessage(orderNo: string, status: string, store = "Super Cake"): string {
+  return `${store}: ${orderStatusHeadline(orderNo, status)}`;
 }

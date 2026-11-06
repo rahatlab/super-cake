@@ -1,6 +1,7 @@
 import { z } from "zod";
-import { MIN_DELIVERY_LEAD_DAYS } from "./constants";
-import { dateOnlyUtc, dhakaDatePlus, phoneKey } from "./utils";
+import { MAX_CAKE_IMAGES, MIN_DELIVERY_LEAD_DAYS } from "./constants.ts";
+import { SYRUP_VALUES } from "./custom-design.ts";
+import { dateOnlyUtc, dhakaDatePlus, dhakaDateString, phoneKey } from "./utils.ts";
 
 export const phoneSchema = z
   .string()
@@ -79,6 +80,17 @@ export const checkoutSchema = z
         servings: z.number().int().min(1).max(200).optional(),
         reference_image: z.string().max(500).optional(),
         budget: z.number().nonnegative().optional(),
+        // 3D design picker from /custom-order — without these keys zod strips
+        // them and the customer's design choices never reach the order.
+        cake_shape: z.enum(["round", "square", "heart", "number"]).optional(),
+        frosting_color: z.string().max(20).optional(),
+        message_font: z.string().max(40).optional(),
+        message_color: z.string().max(20).optional(),
+        decoration: z.enum(["none", "pearls", "macarons", "flowers", "sprinkles"]).optional(),
+        // Configurator extras — tier count drives the 3D preview and the
+        // per-tier up-charge, syrup is the sponge infusion select.
+        tiers: z.number().int().min(1).max(4).optional(),
+        syrup: z.enum(SYRUP_VALUES).optional(),
       })
       .optional()
       .nullable(),
@@ -131,7 +143,10 @@ export const cakeSchema = z.object({
   flavor: z.string().min(1, "Flavour দিন").max(60),
   category: z.string().min(1, "Category দিন").max(60),
   occasions: z.array(occasionSchema).min(1, "অন্তত একটা occasion বাছুন"),
-  image_urls: z.array(z.string().max(500)).min(1, "অন্তত একটা ছবি দিন").max(8),
+  image_urls: z
+    .array(z.string().max(500))
+    .min(1, "অন্তত একটা ছবি দিন")
+    .max(MAX_CAKE_IMAGES, `সর্বোচ্চ ${MAX_CAKE_IMAGES} টি ছবি রাখা যায়`),
   base_price: z.number().int().min(0),
   is_custom_available: z.boolean().default(false),
   is_featured: z.boolean().default(false),
@@ -157,6 +172,42 @@ export const promoSchema = z.object({
   usage_limit: z.number().int().min(1).default(100),
   expires_at: z.string().optional().nullable(),
   is_active: z.boolean().default(true),
+});
+
+/**
+ * Customer milestone dates for the auto-wish cron (`YYYY-MM-DD`, empty
+ * clears). The year is irrelevant — only month+day are matched — but the
+ * value must still be a real calendar date and never in the future.
+ */
+export const milestoneSchema = z.object({
+  birthdate: z
+    .string()
+    .trim()
+    .superRefine((v, ctx) => {
+      if (v === "") return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || dateOnlyUtc(v) === null) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "সঠিক তারিখ দিন" });
+        return;
+      }
+      if (v > dhakaDateString()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "ভবিষ্যতের তারিখ হতে পারে না" });
+      }
+    })
+    .default(""),
+  anniversary_date: z
+    .string()
+    .trim()
+    .superRefine((v, ctx) => {
+      if (v === "") return;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(v) || dateOnlyUtc(v) === null) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "সঠিক তারিখ দিন" });
+        return;
+      }
+      if (v > dhakaDateString()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "ভবিষ্যতের তারিখ হতে পারে না" });
+      }
+    })
+    .default(""),
 });
 
 export const postSchema = z.object({
@@ -208,6 +259,10 @@ export const settingsSchema = z.object({
   bkash_enabled: z.boolean(),
   instagram: z.string().max(200).optional(),
   facebook: z.string().max(200).optional(),
+  // Custom cake pricing
+  extra_tier_fee: z.number().int().min(0).default(300),
+  syrup_prices: z.record(z.string(), z.number()).optional(),
+  crown_prices: z.record(z.string(), z.number()).optional(),
 });
 
 export const trackSchema = z.object({
@@ -262,4 +317,5 @@ export type CakeInput = z.infer<typeof cakeSchema>;
 export type PromoInput = z.infer<typeof promoSchema>;
 export type PostInput = z.infer<typeof postSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type MilestoneInput = z.infer<typeof milestoneSchema>;
 export type CartLeadInput = z.infer<typeof cartLeadSchema>;

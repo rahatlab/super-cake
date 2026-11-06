@@ -23,6 +23,9 @@ const settings = {
   free_delivery_enabled: true,
   cod_enabled: true,
   bkash_enabled: true,
+  extra_tier_fee: 300,
+  syrup_prices: { none: 0, vanilla: 100, chocolate: 120, strawberry: 120, coffee: 130, honey: 150, rose: 140 },
+  crown_prices: { none: 0, sprinkles: 150, pearls: 250, macarons: 450, flowers: 550 },
 };
 
 test("phoneKey keeps the last 10 digits", () => {

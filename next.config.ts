@@ -12,14 +12,24 @@ const nextConfig: NextConfig = {
   compress: true,
   reactStrictMode: true,
 
+  // Review photos are posted to a Server Action (up to 4 × 5MB).
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "25mb",
+    },
+  },
+
   images: {
     formats: ["image/avif", "image/webp"],
-    // local placeholder artwork is SVG; admin uploads can come from Supabase CDN
-    dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    // Local placeholder artwork is SVG. Next.js automatically marks any
+    // ".svg" src as `unoptimized` when dangerouslyAllowSVG is off (see
+    // get-img-props), so these are served as-is — no optimizer proxy, and no
+    // need for the SVG-specific contentSecurityPolicy sandbox.
     remotePatterns: [
       { protocol: "https", hostname: "*.supabase.co", pathname: "/storage/v1/object/public/**" },
       { protocol: "https", hostname: "images.unsplash.com" },
+      // Customer review photos (Cloudinary secure_url)
+      { protocol: "https", hostname: "res.cloudinary.com" },
     ],
   },
 
@@ -51,9 +61,12 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://*.supabase.co https://images.unsplash.com",
+              // Customers paste their own reference-image URLs (track panel),
+              // so any https host must be renderable — a fixed allow-list
+              // would silently blank those images.
+              "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https://*.supabase.co https://graph.facebook.com",
+              "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://graph.facebook.com",
               "frame-ancestors 'self'",
               "base-uri 'self'",
               "form-action 'self'",

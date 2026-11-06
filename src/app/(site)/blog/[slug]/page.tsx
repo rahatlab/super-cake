@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, CalendarDays, Share2 } from "lucide-react";
-import { getStore } from "@/lib/store";
+import { getCachedPostBySlug, getCachedSettings, listCachedPosts } from "@/lib/store/cache";
 import { SITE } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
 import { blogLd, breadcrumbLd, ldJson } from "@/lib/seo";
@@ -14,9 +14,17 @@ interface Ctx {
   params: Promise<{ slug: string }>;
 }
 
+export const revalidate = 300;
+
+/** Prerender published posts; admin edits revalidate the whole site anyway. */
+export async function generateStaticParams() {
+  const posts = await listCachedPosts(true);
+  return posts.map((p) => ({ slug: p.slug }));
+}
+
 export async function generateMetadata({ params }: Ctx): Promise<Metadata> {
   const { slug } = await params;
-  const post = await getStore().getPostBySlug(slug);
+  const post = await getCachedPostBySlug(slug);
   if (!post) return { title: "পোস্ট পাওয়া যায়নি" };
 
   return {
@@ -38,17 +46,13 @@ export async function generateMetadata({ params }: Ctx): Promise<Metadata> {
 
 export default async function BlogPostPage({ params }: Ctx) {
   const { slug } = await params;
-  const store = getStore();
 
-  const post = await store.getPostBySlug(slug);
-  if (!post || !post.is_published) notFound();
-
-  const [settings, allPosts] = await Promise.all([
-    store.getSettings(),
-    store.listPosts({ publishedOnly: true }),
+  const [post, settings] = await Promise.all([
+    getCachedPostBySlug(slug),
+    getCachedSettings(),
   ]);
 
-  const related = allPosts.filter((p) => p.id !== post.id).slice(0, 3);
+  if (!post || !post.is_published) notFound();
 
   return (
     <article className="container-page py-10">
@@ -125,38 +129,6 @@ export default async function BlogPostPage({ params }: Ctx) {
           <Link href="/custom-order" className="btn btn-ghost btn-sm">Custom Cake</Link>
         </div>
       </div>
-
-      {/* related */}
-      {related.length > 0 && (
-        <section className="mt-14">
-          <h2 className="mb-5 text-xl font-extrabold">আরও পড়ুন</h2>
-          <div className="grid gap-5 md:grid-cols-3">
-            {related.map((p) => (
-              <Link key={p.id} href={`/blog/${p.slug}`} className="card group overflow-hidden">
-                <div className="relative aspect-[16/9] bg-brand/8">
-                  {p.cover_image && (
-                    <Image
-                      src={p.cover_image}
-                      alt={p.title}
-                      fill
-                      sizes="33vw"
-                      className="object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  )}
-                </div>
-                <div className="p-4">
-                  <h3 className="line-clamp-2 text-sm font-bold transition-colors group-hover:text-brand-strong">
-                    {p.title}
-                  </h3>
-                  <p className="mt-1.5 text-[11px] text-muted">
-                    {p.published_at ? formatDate(p.published_at) : ""}
-                  </p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
 
       <div className="mt-10 flex justify-center">
         <span className="inline-flex items-center gap-1.5 text-xs text-muted">

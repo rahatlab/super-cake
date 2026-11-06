@@ -6,12 +6,17 @@ import {
   listAbandonedCartsForReminder,
   releaseCartReminder,
 } from "@/lib/whatsapp/cart";
+import { sendDueWishes } from "@/lib/whatsapp/wish";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const BATCH_LIMIT = 25;
+// Vercel Hobby allows exactly one cron schedule per day, so the birthday /
+// anniversary wishes share this run. They come first: a wish is stamped before
+// its send (never retried), while a missed cart reminder retries tomorrow.
+const WISH_LIMIT = 15;
 
 function authorized(req: Request): boolean {
   const auth = req.headers.get("authorization");
@@ -27,6 +32,8 @@ async function run(req: Request) {
       { status: 401, headers: { "Cache-Control": "no-store" } },
     );
   }
+
+  const wishes = await sendDueWishes(WISH_LIMIT);
 
   const carts = (await listAbandonedCartsForReminder()).slice(0, BATCH_LIMIT);
   let sent = 0;
@@ -60,6 +67,7 @@ async function run(req: Request) {
   return NextResponse.json(
     {
       ok: true,
+      wishes,
       total: carts.length,
       sent,
       failed,

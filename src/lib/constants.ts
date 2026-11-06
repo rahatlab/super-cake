@@ -1,5 +1,11 @@
 import type { Occasion, OrderStatus, Settings } from "./types";
 
+/** Max review photos per order (shared by the form and the uploader). */
+export const MAX_REVIEW_PHOTOS = 4;
+
+/** Max images per cake (shared by the admin form, uploader and validator). */
+export const MAX_CAKE_IMAGES = 8;
+
 export const SITE = {
   name: "Super Cake",
   tagline: "Custom Cakes for Every Celebration",
@@ -92,6 +98,9 @@ export const DEFAULT_SETTINGS: Settings = {
   free_delivery_enabled: false,
   cod_enabled: true,
   bkash_enabled: true,
+  extra_tier_fee: 300,
+  syrup_prices: { none: 0, vanilla: 100, chocolate: 120, strawberry: 120, coffee: 130, honey: 150, rose: 140 },
+  crown_prices: { none: 0, sprinkles: 150, pearls: 250, macarons: 450, flowers: 550 },
 };
 
 /** WhatsApp Cloud API (Meta) — configured via env */
@@ -102,6 +111,17 @@ export const WHATSAPP = {
   wabaId: process.env.WHATSAPP_WABA_ID || "",
   verifyToken: process.env.WHATSAPP_VERIFY_TOKEN || "",
   appSecret: process.env.WHATSAPP_APP_SECRET || "",
+  /**
+   * Meta Commerce catalog connected to this WhatsApp account. Required for
+   * catalog sync and for accepting `type: "order"` webhooks; everything else
+   * works without it.
+   */
+  catalogId: process.env.WHATSAPP_CATALOG_ID || "",
+  /** Google product category pushed with every catalog item. */
+  catalogCategory:
+    process.env.WHATSAPP_CATALOG_CATEGORY || "Food & Beverage > Baked Goods > Cakes & Pastries",
+  /** ISO 4217 currency of the catalog (Meta rejects a mismatched price). */
+  catalogCurrency: process.env.WHATSAPP_CATALOG_CURRENCY || "BDT",
   templatesEnabled: process.env.WHATSAPP_TEMPLATES_ENABLED === "true",
   templateLang: process.env.WHATSAPP_TEMPLATE_LANG || "bn",
   automationEnabled: process.env.WHATSAPP_AUTOMATION_ENABLED !== "false",
@@ -115,4 +135,6 @@ export const WHATSAPP_TEMPLATES = {
   newOrderAdmin: "new_order_admin",
   orderReviewRequest: "order_review_request",
   abandonedCart: "abandoned_cart",
+  birthdayWish: "birthday_wish",
+  anniversaryWish: "anniversary_wish",
 } as const;

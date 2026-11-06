@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getStore } from "@/lib/store";
+import { getCachedSettings } from "@/lib/store/cache";
 import { LegalPage } from "@/components/legal-page";
 
 export const metadata: Metadata = {
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 };
 
 export default async function DataDeletionPage() {
-  const settings = await getStore().getSettings();
+  const settings = await getCachedSettings();
   const wa = settings.whatsapp_phone.replace(/\D/g, "");
 
   return (

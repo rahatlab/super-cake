@@ -1,5 +1,5 @@
 -- ===========================================================================
---  Super Cake — Supabase (PostgreSQL) schema
+--  Super Cake - Supabase (PostgreSQL) schema
 --  Run this in:  Supabase Dashboard -> SQL Editor -> New query -> Run
 --
 --  After running it:
@@ -19,8 +19,22 @@ create table if not exists profiles (
   email         text unique,
   role          text not null default 'customer' check (role in ('customer','admin')),
   password_hash text not null,
+  birthdate     date,
+  anniversary_date date,
+  last_birthday_wish date,
+  last_anniversary_wish date,
+  is_blocked    boolean not null default false,
   created_at    timestamptz not null default now()
 );
+
+-- Indexes for milestone queries
+create index if not exists profiles_birthday_idx
+  on profiles (birthdate)
+  where birthdate is not null;
+
+create index if not exists profiles_anniversary_idx
+  on profiles (anniversary_date)
+  where anniversary_date is not null;
 
 -- ---------------------------------- cakes ---------------------------------
 create table if not exists cakes (
@@ -78,12 +92,20 @@ create table if not exists orders (
   order_status      text not null default 'pending'
                     check (order_status in ('pending','confirmed','baking','out_for_delivery','delivered','completed','cancelled')),
   note              text,
+  review_requested_at timestamptz,
+  idempotency_key   text,
+  -- admin marks suspected fake/prank orders (🚩) to spot repeat offenders
+  is_flagged        boolean not null default false,
   created_at        timestamptz not null default now(),
   updated_at        timestamptz not null default now()
 );
 create index if not exists orders_created_idx on orders (created_at desc);
 create index if not exists orders_status_idx on orders (order_status);
 create index if not exists orders_phone_idx on orders (phone);
+create index if not exists orders_user_idx on orders (user_id);
+create index if not exists orders_delivery_date_idx on orders (delivery_date);
+create index if not exists orders_idempotency_key_idx on orders (idempotency_key) where idempotency_key is not null;
+create index if not exists orders_flagged_idx on orders (is_flagged) where is_flagged;
 
 -- -------------------------------- payments --------------------------------
 create table if not exists payments (
@@ -121,6 +143,7 @@ create table if not exists reviews (
   rating        integer not null check (rating between 1 and 5),
   comment       text not null,
   cake_slug     text,
+  photos        text[] not null default '{}',
   is_approved   boolean not null default true,
   created_at    timestamptz not null default now()
 );
@@ -163,6 +186,7 @@ create table if not exists notifications (
   created_at timestamptz not null default now()
 );
 create index if not exists notifications_read_idx on notifications (is_read);
+create index if not exists notifications_user_idx on notifications (user_id);
 
 -- --------------------------------- settings -------------------------------
 create table if not exists settings (
@@ -180,17 +204,30 @@ create table if not exists settings (
   cod_enabled           boolean not null default true,
   bkash_enabled         boolean not null default true,
   instagram             text,
-  facebook              text
+  facebook              text,
+  -- Custom cake pricing (JSON stored as text for simplicity)
+  extra_tier_fee        integer not null default 300,
+  syrup_prices          jsonb not null default '{"none":0,"vanilla":100,"chocolate":120,"strawberry":120,"coffee":130,"honey":150,"rose":140}'::jsonb,
+  crown_prices          jsonb not null default '{"none":0,"sprinkles":150,"pearls":250,"macarons":450,"flowers":550}'::jsonb
 );
 
 insert into settings (id) values (1) on conflict (id) do nothing;
+
+-- Add missing columns if they don't exist (for existing tables)
+alter table settings add column if not exists extra_tier_fee integer not null default 300;
+alter table settings add column if not exists syrup_prices jsonb not null default '{"none":0,"vanilla":100,"chocolate":120,"strawberry":120,"coffee":130,"honey":150,"rose":140}'::jsonb;
+alter table settings add column if not exists crown_prices jsonb not null default '{"none":0,"sprinkles":150,"pearls":250,"macarons":450,"flowers":550}'::jsonb;
 
 -- ------------------------- referral codes (optional) ----------------------
 create table if not exists referrals (
   id         text primary key default ('ref_' || substr(md5(random()::text), 1, 10)),
   code       text not null unique,
   owner_id   text references profiles(id) on delete cascade,
-  used_count integer not null default 0
+  used_count integer not null default 0,
+  max_uses   integer not null default 100,
+  is_active  boolean not null default true,
+  expires_at timestamptz,
+  created_at timestamptz not null default now()
 );
 
 -- ===========================================================================
@@ -210,7 +247,31 @@ alter table notifications  enable row level security;
 alter table settings       enable row level security;
 alter table referrals      enable row level security;
 
+-- Automatic updated_at trigger for orders
+create or replace function update_updated_at_column()
+returns trigger
+language plpgsql
+as $$
+begin
+  new.updated_at = now();
+  return new;
+end;
+$$;
+
+drop trigger if exists update_orders_updated_at on orders;
+create trigger update_orders_updated_at
+before update on orders
+for each row execute function update_updated_at_column();
+
 -- public read of published catalogue content (never orders/credentials)
+drop policy if exists "public read cakes" on cakes;
+drop policy if exists "public read sizes" on cake_sizes;
+drop policy if exists "public read posts" on blog_posts;
+drop policy if exists "public read banners" on banners;
+drop policy if exists "public read reviews" on reviews;
+drop policy if exists "public read settings" on settings;
+drop policy if exists "public read promos" on promo_codes;
+
 create policy "public read cakes"   on cakes          for select using (is_active = true);
 create policy "public read sizes"   on cake_sizes     for select using (true);
 create policy "public read posts"   on blog_posts     for select using (is_published = true);
@@ -228,6 +289,9 @@ insert into storage.buckets (id, name, public)
 values ('cakes', 'cakes', true)
 on conflict (id) do nothing;
 
+drop policy if exists "public read cake images" on storage.objects;
+drop policy if exists "service role uploads cake images" on storage.objects;
+
 create policy "public read cake images"
   on storage.objects for select
   using (bucket_id = 'cakes');
@@ -237,8 +301,118 @@ create policy "service role uploads cake images"
   to service_role
   with check (bucket_id = 'cakes');
 
+-- ---------------------------------------------------------------------------
+--  Order status timeline + realtime tracking (same as phase-realtime.sql)
+-- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
+--  1. Review photos (Cloudinary secure URLs)
+-- ---------------------------------------------------------------------------
+alter table reviews add column if not exists photos text[] not null default '{}';
+
+-- ---------------------------------------------------------------------------
+--  2. Order status timeline
+--     Rows are appended by the app (store.updateOrder) on every real status
+--     transition, so the customer timeline can show real timestamps.
+-- ---------------------------------------------------------------------------
+create table if not exists order_status_history (
+  id         text primary key default ('osh_' || substr(md5(random()::text), 1, 10)),
+  order_id   text not null references orders(id) on delete cascade,
+  status     text not null
+             check (status in ('pending','confirmed','baking','out_for_delivery','delivered','completed','cancelled')),
+  note       text,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists order_status_history_order_idx
+  on order_status_history (order_id, created_at);
+
+-- Legacy orders get a "pending" row so the timeline has a start time.
+insert into order_status_history (order_id, status, created_at)
+select o.id, 'pending', o.created_at
+from orders o
+where not exists (
+  select 1 from order_status_history h where h.order_id = o.id
+);
+
+-- ---------------------------------------------------------------------------
+--  3. Public tracking table (Realtime source)
+--     Deliberately contains status only - no name, phone, address or items.
+-- ---------------------------------------------------------------------------
+create table if not exists order_tracking (
+  order_id       text primary key references orders(id) on delete cascade,
+  order_status   text not null,
+  payment_status text not null,
+  updated_at     timestamptz not null default now()
+);
+
+create or replace function sync_order_tracking()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into order_tracking (order_id, order_status, payment_status, updated_at)
+  values (new.id, new.order_status, new.payment_status, coalesce(new.updated_at, now()))
+  on conflict (order_id) do update
+    set order_status   = excluded.order_status,
+        payment_status = excluded.payment_status,
+        updated_at     = excluded.updated_at;
+  return new;
+end;
+$$;
+
+drop trigger if exists orders_sync_tracking on orders;
+create trigger orders_sync_tracking
+after insert or update of order_status, payment_status on orders
+for each row execute function sync_order_tracking();
+
+-- Backfill existing orders.
+insert into order_tracking (order_id, order_status, payment_status, updated_at)
+select id, order_status, payment_status, coalesce(updated_at, created_at)
+from orders
+on conflict (order_id) do nothing;
+
+-- Row level security: anyone may read, nobody may write with the anon key
+-- (the trigger is the only writer).
+alter table order_tracking enable row level security;
+
+drop policy if exists "order_tracking public read" on order_tracking;
+create policy "order_tracking public read"
+  on order_tracking for select
+  using (true);
+
+grant select on order_tracking to anon, authenticated;
+
+-- ---------------------------------------------------------------------------
+--  4. Enable Realtime for the tracking table
+-- ---------------------------------------------------------------------------
+-- REPLICA IDENTITY FULL is required: an UPDATE payload otherwise only contains
+-- the primary key and the changed columns, so a payment-only change would not
+-- carry order_status.
+-- NOTE: This may impact write performance under heavy load. Consider using
+-- REPLICA IDENTITY DEFAULT if performance issues arise.
+alter table order_tracking replica identity full;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_publication_tables
+    where pubname = 'supabase_realtime'
+      and schemaname = 'public'
+      and tablename = 'order_tracking'
+  ) then
+    execute 'alter publication supabase_realtime add table public.order_tracking';
+  end if;
+end $$;
+
+analyze order_status_history;
+analyze order_tracking;
+
 -- ===========================================================================
---  OPTIONAL demo data — uncomment to start with a few products
+--  OPTIONAL demo data - uncomment to start with a few products
 -- ===========================================================================
 -- insert into cakes (name, slug, description, flavor, category, occasions,
 --                    image_urls, base_price, is_featured, stock) values

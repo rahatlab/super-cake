@@ -4,18 +4,20 @@ import {
   WHATSAPP,
   WHATSAPP_TEMPLATES,
 } from "./constants";
-import type { OrderStatus } from "./types";
-import { formatBDT, orderStatusMessage, toE164 } from "./utils";
+import type { Order, OrderStatus } from "./types";
+import { formatBDT, formatDate, orderStatusHeadline, toE164 } from "./utils";
+import { clampReplyButtons, type WsButton } from "./whatsapp-menu";
 import { logWhatsAppMessage } from "./whatsapp/log";
 
 const GRAPH = "https://graph.facebook.com/v26.0";
 const REQUEST_TIMEOUT_MS = 10_000;
 
 export { toE164 };
+export type { WsButton };
 
 export interface WsResult {
   ok: boolean;
-  mode: "cloud_api" | "template" | "link_only" | "disabled";
+  mode: "cloud_api" | "template" | "interactive" | "link_only" | "disabled";
   detail?: string;
   messageId?: string;
   template?: string;
@@ -77,6 +79,82 @@ export async function sendWhatsApp(to: string, body: string): Promise<WsResult> 
     type: "text",
     text: { preview_url: false, body },
   });
+}
+
+/**
+ * Mark an inbound message as read so the customer sees the blue ticks.
+ * Best-effort: a failure here must never delay the actual reply.
+ */
+export async function markMessageRead(messageId: string): Promise<void> {
+  if (!canSend() || !messageId) return;
+  try {
+    await fetch(`${GRAPH}/${WHATSAPP.phoneId}/messages`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${WHATSAPP.token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        status: "read",
+        message_id: messageId,
+      }),
+      cache: "no-store",
+      signal: AbortSignal.timeout(5_000),
+    });
+  } catch {
+    // Read receipts are cosmetic — ignore.
+  }
+}
+
+/**
+ * Send an interactive quick-reply button message.
+ *
+ * Only valid inside the 24-hour customer-service window, which is exactly
+ * where auto-replies run (they are always a response to an inbound message).
+ * Meta allows at most 3 buttons with a 20-character title each, so anything
+ * longer is truncated rather than rejected by the API.
+ */
+export async function sendInteractiveButtons(
+  to: string,
+  body: string,
+  buttons: WsButton[],
+): Promise<WsResult> {
+  if (!canSend()) return { ok: false, mode: "disabled", detail: disabledReason() };
+  if (!buttons.length) return sendWhatsApp(to, body);
+
+  const trimmed = clampReplyButtons(buttons).map((b) => ({
+    type: "reply",
+    reply: { id: b.id, title: b.title },
+  }));
+
+  return postMessage({
+    messaging_product: "whatsapp",
+    to: toE164(to),
+    type: "interactive",
+    interactive: {
+      type: "button",
+      body: { text: body.slice(0, 1024) },
+      action: { buttons: trimmed },
+    },
+  });
+}
+
+/**
+ * Send an auto-reply, preferring interactive quick-reply buttons and falling
+ * back to the plain numbered text if Meta rejects the interactive payload
+ * (out of window, template-only account, etc.).
+ */
+export async function sendAutoReply(
+  to: string,
+  reply: { text: string; fallbackText?: string; buttons?: WsButton[] },
+): Promise<WsResult> {
+  if (reply.buttons?.length) {
+    const interactive = await sendInteractiveButtons(to, reply.text, reply.buttons);
+    if (interactive.ok) return interactive;
+    return sendWhatsApp(to, reply.fallbackText ?? reply.text);
+  }
+  return sendWhatsApp(to, reply.text);
 }
 
 /** Send a Meta-approved message template with body parameters. */
@@ -149,7 +227,85 @@ async function logResult(
     templateName: result.template ?? opts.templateName,
     orderId: opts.orderId,
     cartId: opts.cartId,
+    metaMessageId: result.messageId,
   });
+}
+
+/* ---------------- rich, structured order messages ---------------- */
+
+const PAYMENT_BN: Record<string, string> = {
+  paid: "পরিশোধিত",
+  pending_verify: "যাচাই বাকি",
+  unpaid: "বাকি",
+  refunded: "ফেরত দেওয়া হয়েছে",
+};
+
+const PAYMENT_METHOD_BN: Record<string, string> = {
+  cod: "ক্যাশ অন ডেলিভারি",
+  bkash: "bKash",
+};
+
+const SLOT_BN: Record<string, string> = {
+  morning: "সকাল (৯টা–১২টা)",
+  afternoon: "দুপুর (১২টা–৪টা)",
+  evening: "বিকাল (৪টা–৮টা)",
+  night: "রাত (৮টা–১০টা)",
+};
+
+/** One `• Item ×2 (1 lb)` line per cart line, capped so the message stays short. */
+function itemLines(order: Order, max = 6): string[] {
+  const lines = order.items.slice(0, max).map((i) => {
+    const weight = i.weight ? ` (${i.weight} lb)` : "";
+    return `• ${i.name} ×${i.quantity}${weight}`;
+  });
+  const extra = order.items.length - max;
+  if (extra > 0) lines.push(`… আরও ${extra} টি`);
+  return lines;
+}
+
+/**
+ * A structured order summary using WhatsApp's native `*bold*` markup.
+ * Free-form WhatsApp text is used here because it always works inside the
+ * 24h window; the approved template carries only the three parameters Meta
+ * requires.
+ *
+ * `status` is passed explicitly because callers notify from a stale copy of
+ * the order (read before the update), so `order.order_status` can be the
+ * previous state.
+ */
+function orderSummary(
+  order: Order,
+  storeName: string,
+  headline: string,
+  status: OrderStatus = order.order_status,
+): string {
+  const statusBn = ORDER_STATUS_META[status]?.bn ?? status;
+  const delivery = [
+    order.delivery_date,
+    order.delivery_slot ? SLOT_BN[order.delivery_slot] ?? order.delivery_slot : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return [
+    `*${storeName}*`,
+    "",
+    headline,
+    "",
+    `*অর্ডার:* ${order.order_no}`,
+    `*স্ট্যাটাস:* ${statusBn}`,
+    "",
+    "*আইটেম:*",
+    ...itemLines(order).map((l) => `   ${l}`),
+    "",
+    `*ডেলিভারি:* ${delivery}`,
+    `*পেমেন্ট:* ${PAYMENT_BN[order.payment_status] ?? order.payment_status} · ${
+      PAYMENT_METHOD_BN[order.payment_method] ?? order.payment_method
+    }`,
+    `*মোট:* ${formatBDT(order.total)}`,
+    "",
+    `*ট্র্যাক করুন:* ${SITE.url}/track`,
+  ].join("\n");
 }
 
 /** Notify the shop owner about a new order. */
@@ -174,22 +330,21 @@ export async function notifyAdminNewOrder(
 }
 
 /** Confirm a newly placed order to the customer. */
-export async function notifyOrderConfirmation(input: {
-  phone: string;
-  customerName: string;
-  orderNo: string;
-  total: number;
-  orderId?: string;
-}): Promise<WsResult> {
-  const fallback = `${SITE.name}: ধন্যবাদ ${input.customerName}! আপনার অর্ডার ${input.orderNo} গ্রহণ করা হয়েছে। মোট ${formatBDT(input.total)}।`;
+export async function notifyOrderConfirmation(input: { order: Order }): Promise<WsResult> {
+  const { order } = input;
+  const fallback = orderSummary(
+    order,
+    SITE.name,
+    `ধন্যবাদ ${order.customer_name}! আপনার অর্ডার গ্রহণ করা হয়েছে।`,
+  );
   const result = await sendWithFallback(
-    input.phone,
+    order.phone,
     WHATSAPP_TEMPLATES.orderConfirmation,
-    [input.customerName, input.orderNo, formatBDT(input.total)],
+    [order.customer_name, order.order_no, formatBDT(order.total)],
     fallback,
   );
-  await logResult("order_confirmation", input.phone, result, {
-    orderId: input.orderId,
+  await logResult("order_confirmation", order.phone, result, {
+    orderId: order.id,
     templateName: WHATSAPP.templatesEnabled ? WHATSAPP_TEMPLATES.orderConfirmation : undefined,
   });
   return result;
@@ -197,26 +352,22 @@ export async function notifyOrderConfirmation(input: {
 
 /** Notify a customer about an order status change. */
 export async function notifyOrderStatus(input: {
-  phone: string;
-  orderNo: string;
-  status: string;
+  order: Order;
+  status: OrderStatus;
   storeName?: string;
-  orderId?: string;
 }): Promise<WsResult> {
-  const statusBn = ORDER_STATUS_META[input.status as OrderStatus]?.bn ?? input.status;
-  const fallback = orderStatusMessage(
-    input.orderNo,
-    input.status,
-    input.storeName ?? SITE.name,
-  );
+  const { order, status } = input;
+  const storeName = input.storeName ?? SITE.name;
+  const statusBn = ORDER_STATUS_META[status]?.bn ?? status;
+  const fallback = orderSummary(order, storeName, orderStatusHeadline(order.order_no, status), status);
   const result = await sendWithFallback(
-    input.phone,
+    order.phone,
     WHATSAPP_TEMPLATES.orderStatusUpdate,
-    [input.orderNo, statusBn, `${SITE.url}/track`],
+    [order.order_no, statusBn, `${SITE.url}/track`],
     fallback,
   );
-  await logResult("order_status_update", input.phone, result, {
-    orderId: input.orderId,
+  await logResult("order_status_update", order.phone, result, {
+    orderId: order.id,
     templateName: WHATSAPP.templatesEnabled ? WHATSAPP_TEMPLATES.orderStatusUpdate : undefined,
   });
   return result;
@@ -261,6 +412,55 @@ export async function notifyAbandonedCart(input: {
   await logResult("abandoned_cart", input.phone, result, {
     cartId: input.cartId,
     templateName: WHATSAPP.templatesEnabled ? WHATSAPP_TEMPLATES.abandonedCart : undefined,
+  });
+  return result;
+}
+
+/**
+ * Birthday / anniversary greeting with a personal promo code (sent by the
+ * daily cron — outside any 24h window, so an approved template is required;
+ * the free-form fallback still works in demo mode where the window is open).
+ */
+export async function notifyWish(input: {
+  phone: string;
+  name: string;
+  kind: "birthday" | "anniversary";
+  code: string;
+  percent: number;
+  maxDiscount: number;
+  expiresAt: string;
+}): Promise<WsResult> {
+  const templateName =
+    input.kind === "birthday"
+      ? WHATSAPP_TEMPLATES.birthdayWish
+      : WHATSAPP_TEMPLATES.anniversaryWish;
+  const headline =
+    input.kind === "birthday" ? "জন্মদিনের শুভেচ্ছা" : "বার্ষিকীর শুভেচ্ছা";
+  const storeUrl = `${SITE.url}/cakes`;
+
+  const fallback = [
+    `*${SITE.name}*`,
+    "",
+    `*${headline}, ${input.name}!*`,
+    input.kind === "birthday"
+      ? "আপনার বিশেষ দিনে আমরা আন্তরিক শুভেচ্ছা জানাচ্ছি — ভালো থাকুন, আরও অনেক কেক কেটে উদ্‌যাপন করুন!"
+      : "আপনার বিশেষ দিনে আমরা আন্তরিক শুভেচ্ছা জানাচ্ছি — এই উপলক্ষে একটি বিশেষ উপহার আপনার জন্য!",
+    "",
+    `*প্রোমো কোড:* ${input.code}`,
+    `*ছাড়:* ${input.percent}% (সর্বোচ্চ ৳${input.maxDiscount})`,
+    `*মেয়াদ:* ${formatDate(input.expiresAt)} পর্যন্ত`,
+    "",
+    `*এখনই অর্ডার করুন:* ${storeUrl}`,
+  ].join("\n");
+
+  const result = await sendWithFallback(
+    input.phone,
+    templateName,
+    [input.name, input.code, `${input.percent}%`, formatDate(input.expiresAt)],
+    fallback,
+  );
+  await logResult(`${input.kind}_wish`, input.phone, result, {
+    templateName: WHATSAPP.templatesEnabled ? templateName : undefined,
   });
   return result;
 }

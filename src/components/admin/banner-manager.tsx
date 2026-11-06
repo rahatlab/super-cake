@@ -3,6 +3,8 @@
 import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Megaphone, Save, Trash2 } from "lucide-react";
+import { toast } from "react-toastify";
+import { confirmDialog } from "@/lib/confirm";
 import type { Banner } from "@/lib/types";
 import { cn, formatDateTime } from "@/lib/utils";
 import { deleteBannerAction, saveBannerAction, type ActionState } from "@/lib/actions/admin";
@@ -26,11 +28,33 @@ export function BannerManager({ banners }: { banners: Banner[] }) {
   const [rowMsg, setRowMsg] = useState<string | null>(null);
   const [rowPending, startRow] = useTransition();
 
-  function remove(b: Banner) {
-    if (!window.confirm(`"${b.title}" ব্যানারটি মুছে ফেলতে চান?`)) return;
+  async function remove(b: Banner) {
+    const ok = await confirmDialog({
+      title: `"${b.title}" ব্যানারটি মুছে ফেলবেন?`,
+      text: "মুছে ফেলার পর এটি আর ফিরে আসবে না।",
+      confirmText: "মুছে ফেলুন",
+    });
+    if (!ok) return;
     startRow(async () => {
+      const toastId = toast.loading("ব্যানার মুছে ফেলা হচ্ছে...");
       const res = await deleteBannerAction(b.id);
-      setRowMsg(res.error ? `⚠️ ${res.error}` : (res.success ?? null));
+      if (res.error) {
+        toast.update(toastId, {
+          render: res.error,
+          type: "error",
+          isLoading: false,
+          autoClose: 3500,
+        });
+        setRowMsg(`⚠️ ${res.error}`);
+      } else {
+        toast.update(toastId, {
+          render: res.success ?? "ব্যানার মুছে ফেলা হয়েছে",
+          type: "success",
+          isLoading: false,
+          autoClose: 3500,
+        });
+        setRowMsg(res.success ?? null);
+      }
       router.refresh();
     });
   }

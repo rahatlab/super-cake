@@ -3,24 +3,54 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { toast } from "react-toastify";
 import { ORDER_STATUS_FLOW, ORDER_STATUS_META } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { updateOrderStatusAction, type ActionState } from "@/lib/actions/admin";
+import { updateOrderStatusAction } from "@/lib/actions/admin";
 import type { OrderStatus } from "@/lib/types";
 
 const ALL_STATUSES: OrderStatus[] = [...ORDER_STATUS_FLOW, "cancelled"];
 
 export function StatusControls({ orderId, current }: { orderId: string; current: OrderStatus }) {
   const router = useRouter();
-  const [msg, setMsg] = useState<ActionState>({});
+  const [busy, setBusy] = useState<OrderStatus | null>(null);
   const [pending, startTransition] = useTransition();
 
   function setStatus(status: OrderStatus) {
-    setMsg({});
+    if (pending) return;
+    // Spinner belongs to the clicked button only — a single shared `pending`
+    // flag used to put a spinner on every button at once.
+    setBusy(status);
     startTransition(async () => {
-      const res = await updateOrderStatusAction(orderId, status);
-      setMsg(res);
-      router.refresh();
+      const toastId = toast.loading(`স্ট্যাটাস ${ORDER_STATUS_META[status].bn} করা হচ্ছে...`);
+      try {
+        const res = await updateOrderStatusAction(orderId, status);
+        if (res.error) {
+          toast.update(toastId, {
+            render: res.error,
+            type: "error",
+            isLoading: false,
+            autoClose: 3500,
+          });
+        } else if (res.success) {
+          toast.update(toastId, {
+            render: res.success,
+            type: "success",
+            isLoading: false,
+            autoClose: 3500,
+          });
+        }
+        router.refresh();
+      } catch (e) {
+        toast.update(toastId, {
+          render: (e as Error).message,
+          type: "error",
+          isLoading: false,
+          autoClose: 3500,
+        });
+      } finally {
+        setBusy(null);
+      }
     });
   }
 
@@ -44,6 +74,7 @@ export function StatusControls({ orderId, current }: { orderId: string; current:
               disabled={isCurrent || pending}
               onClick={() => setStatus(status)}
               aria-label={`স্ট্যাটাস ${meta.bn} করুন`}
+              aria-busy={busy === status}
               className={cn(
                 "btn btn-sm border",
                 isCurrent
@@ -54,23 +85,12 @@ export function StatusControls({ orderId, current }: { orderId: string; current:
                 isCurrent && meta.color,
               )}
             >
-              {pending && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
+              {busy === status && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
               {meta.bn}
             </button>
           );
         })}
       </div>
-
-      {msg.success && (
-        <p role="status" className="mt-3 rounded-xl bg-success/10 px-3 py-2 text-sm font-semibold text-success">
-          ✅ {msg.success}
-        </p>
-      )}
-      {msg.error && (
-        <p role="alert" className="mt-3 rounded-xl bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">
-          ⚠️ {msg.error}
-        </p>
-      )}
     </section>
   );
 }

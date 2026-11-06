@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, Home, MessageCircle, PackageCheck, Search } from "lucide-react";
 import { getStore } from "@/lib/store";
+import { getCachedSettings } from "@/lib/store/cache";
 import { notFound } from "next/navigation";
 import { formatBDT, waLink } from "@/lib/utils";
 import { ORDER_STATUS_META } from "@/lib/constants";
@@ -55,7 +56,7 @@ export default async function OrderSuccessPage({
     );
   }
 
-  const settings = await store.getSettings();
+  const settings = await getCachedSettings();
   const wa = waLink(
     settings.whatsapp_phone,
     `হ্যালো ${settings.store_name}! আমার অর্ডার ${order.order_no} নিয়ে কথা বলতে চাই।`,

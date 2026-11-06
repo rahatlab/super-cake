@@ -1,15 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Loader2, MapPin, MessageCircle, Phone, Search, Star } from "lucide-react";
-import type { Order } from "@/lib/types";
+import { Check, Loader2, MapPin, MessageCircle, Phone, Radio, Search, Star } from "lucide-react";
+import type { Order, OrderStatusHistory } from "@/lib/types";
 import { ORDER_STATUS_FLOW, ORDER_STATUS_META } from "@/lib/constants";
 import { formatBDT, formatDateTime, waLink } from "@/lib/utils";
 import { trackOrderAction, type TrackResult } from "@/lib/actions/order";
+import { useOrderLive } from "@/components/track/use-order-live";
+import { CustomDesignSummary, hasCustomDesign } from "@/components/order/custom-design-summary";
 
 const initialState: TrackResult = {};
+
+/** Build-time flag: Realtime needs the public anon key. */
+const REALTIME_ENABLED = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
 export function TrackPanel({
   initialNo,
@@ -23,15 +28,55 @@ export function TrackPanel({
   whatsappPhone: string;
 }) {
   const [order, setOrder] = useState<Order | undefined>(undefined);
+  const [history, setHistory] = useState<OrderStatusHistory[]>([]);
+  const [lookupPhone, setLookupPhone] = useState("");
   const [state, formAction, pending] = useActionState(
     async (prev: TrackResult, fd: FormData) => {
       const result = await trackOrderAction(prev, fd);
       // Keep the last successful order visible when a later lookup fails.
-      if (result.order) setOrder(result.order);
+      if (result.order) {
+        setOrder(result.order);
+        setHistory(result.history ?? []);
+        setLookupPhone(String(fd.get("phone") ?? ""));
+      }
       return result;
     },
     initialState,
   );
+
+  const live = useOrderLive(
+    order ? { orderId: order.id, orderNo: order.order_no, phone: lookupPhone } : null,
+  );
+
+  /**
+   * Merge the websocket update during render instead of copying it into state:
+   * no effect, no cascading renders, and the server history stays untouched.
+   */
+  const viewOrder: Order | undefined = useMemo(() => {
+    if (!order) return undefined;
+    if (!live) return order;
+    return {
+      ...order,
+      order_status: live.order_status,
+      payment_status: live.payment_status,
+      updated_at: live.updated_at,
+    };
+  }, [order, live]);
+
+  const viewHistory: OrderStatusHistory[] = useMemo(() => {
+    if (!order) return [];
+    if (!live || history.some((h) => h.status === live.order_status)) return history;
+    return [
+      ...history,
+      {
+        id: `live_${live.updated_at}`,
+        order_id: order.id,
+        status: live.order_status,
+        note: null,
+        created_at: live.updated_at,
+      },
+    ];
+  }, [history, live, order]);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -91,34 +136,36 @@ export function TrackPanel({
 
       {/* result */}
       <AnimatePresence mode="wait">
-        {order && (
+        {viewOrder && (
           <motion.div
-            key={order.id}
+            key={viewOrder.id}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
             className="mt-6 space-y-5"
           >
-            <OrderTimeline order={order} />
+            <OrderTimeline order={viewOrder} history={viewHistory} liveSource={live?.source} />
 
             <div className="card p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-semibold text-muted">অর্ডার</p>
-                  <p className="font-display text-xl font-extrabold">{order.order_no}</p>
-                  <p className="mt-1 text-xs text-muted">অর্ডারের সময়: {formatDateTime(order.created_at)}</p>
+                  <p className="font-display text-xl font-extrabold">{viewOrder.order_no}</p>
+                  <p className="mt-1 text-xs text-muted">
+                    অর্ডারের সময়: {formatDateTime(viewOrder.created_at)}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs font-semibold text-muted">মোট</p>
                   <p className="font-display text-2xl font-extrabold text-brand-strong">
-                    {formatBDT(order.total)}
+                    {formatBDT(viewOrder.total)}
                   </p>
                   <p className="text-[11px] text-muted">
-                    {order.payment_method === "cod" ? "Cash on Delivery" : "bKash"} ·{" "}
-                    {order.payment_status === "paid"
+                    {viewOrder.payment_method === "cod" ? "Cash on Delivery" : "bKash"} ·{" "}
+                    {viewOrder.payment_status === "paid"
                       ? "Paid ✅"
-                      : order.payment_status === "pending_verify"
+                      : viewOrder.payment_status === "pending_verify"
                         ? "ভেরিফাই হচ্ছে"
                         : "বাকি"}
                   </p>
@@ -129,7 +176,7 @@ export function TrackPanel({
                 <div>
                   <p className="text-xs font-semibold text-muted">আইটেম</p>
                   <ul className="mt-1 space-y-1">
-                    {order.items.map((it, i) => (
+                    {viewOrder.items.map((it, i) => (
                       <li key={i}>
                         {it.name}
                         {it.weight ? ` · ${it.weight} lb` : ""} × {it.quantity}
@@ -141,24 +188,20 @@ export function TrackPanel({
                   <p className="text-xs font-semibold text-muted">ডেলিভারি</p>
                   <p className="mt-1 flex items-start gap-1.5">
                     <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" />
-                    {order.address}
+                    {viewOrder.address}
                   </p>
-                  <p className="mt-1 text-xs text-muted">{order.delivery_date}</p>
+                  <p className="mt-1 text-xs text-muted">{viewOrder.delivery_date}</p>
                 </div>
               </div>
-
-              {order.custom_spec?.message_on_cake && (
-                <p className="mt-3 rounded-xl border border-dashed border-brand/40 bg-brand/6 px-4 py-2.5 text-center text-sm font-semibold text-brand-strong">
-                  ✍️ {order.custom_spec.message_on_cake}
-                </p>
-              )}
             </div>
+
+            <CustomDesignPreview order={viewOrder} />
 
             <div className="grid gap-3 sm:grid-cols-2">
               <a
                 href={waLink(
                   whatsappPhone,
-                  `হ্যালো ${storeName}! আমার অর্ডার ${order.order_no} নিয়ে জানতে চাই।`,
+                  `হ্যালো ${storeName}! আমার অর্ডার ${viewOrder.order_no} নিয়ে জানতে চাই।`,
                 )}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -167,8 +210,8 @@ export function TrackPanel({
                 <MessageCircle className="h-4 w-4" /> WhatsApp এ কথা বলুন
               </a>
 
-              {["delivered", "completed"].includes(order.order_status) ? (
-                <Link href={`/review/${order.id}`} className="btn btn-primary btn-block">
+              {["delivered", "completed"].includes(viewOrder.order_status) ? (
+                <Link href={`/review/${viewOrder.id}`} className="btn btn-primary btn-block">
                   <Star className="h-4 w-4" /> রিভিউ দিন
                 </Link>
               ) : (
@@ -186,30 +229,47 @@ export function TrackPanel({
 
 /* --------------------------- timeline --------------------------- */
 
-function OrderTimeline({ order }: { order: Order }) {
+function OrderTimeline({
+  order,
+  history,
+  liveSource,
+}: {
+  order: Order;
+  history: OrderStatusHistory[];
+  liveSource?: "realtime" | "poll";
+}) {
   const cancelled = order.order_status === "cancelled";
   const flow = ORDER_STATUS_FLOW;
   const currentIndex = flow.indexOf(order.order_status);
+
+  /** First time each status was entered. */
+  const stamps = new Map<string, string>();
+  for (const h of history) if (!stamps.has(h.status)) stamps.set(h.status, h.created_at);
 
   if (cancelled) {
     return (
       <div className="card border-danger/40 p-6 text-center">
         <span className="text-4xl">❌</span>
         <p className="mt-2 font-display text-xl font-extrabold text-danger">অর্ডার বাতিল করা হয়েছে</p>
-        <p className="mt-1 text-sm text-muted">
-          বিস্তারিত জানতে আমাদের WhatsApp এ মেসেজ দিন।
-        </p>
+        {stamps.get("cancelled") && (
+          <p className="mt-1 text-xs text-muted">{formatDateTime(stamps.get("cancelled")!)}</p>
+        )}
+        <p className="mt-2 text-sm text-muted">বিস্তারিত জানতে আমাদের WhatsApp এ মেসেজ দিন।</p>
       </div>
     );
   }
 
   return (
     <div className="card p-6">
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-extrabold">অর্ডার ট্র্যাকিং</h2>
-        <span className={`badge ${ORDER_STATUS_META[order.order_status].color}`}>
-          {ORDER_STATUS_META[order.order_status].label} · {ORDER_STATUS_META[order.order_status].bn}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <LiveBadge source={liveSource} />
+          <span className={`badge ${ORDER_STATUS_META[order.order_status].color}`}>
+            {ORDER_STATUS_META[order.order_status].label} ·{" "}
+            {ORDER_STATUS_META[order.order_status].bn}
+          </span>
+        </div>
       </div>
 
       <ol className="relative space-y-0">
@@ -217,6 +277,7 @@ function OrderTimeline({ order }: { order: Order }) {
           const done = i < currentIndex;
           const current = i === currentIndex;
           const meta = ORDER_STATUS_META[status];
+          const stamp = stamps.get(status);
 
           return (
             <li key={status} className="relative flex gap-4 pb-6 last:pb-0">
@@ -247,7 +308,13 @@ function OrderTimeline({ order }: { order: Order }) {
                   color: done || current ? "hsl(var(--brand-fg))" : "hsl(var(--muted))",
                 }}
               >
-                {done ? <Check className="h-4 w-4" /> : current ? <GlowDot /> : <span className="h-2 w-2 rounded-full bg-current" />}
+                {done ? (
+                  <Check className="h-4 w-4" />
+                ) : current ? (
+                  <GlowDot />
+                ) : (
+                  <span className="h-2 w-2 rounded-full bg-current" />
+                )}
               </motion.span>
 
               <div className="pt-1">
@@ -258,6 +325,13 @@ function OrderTimeline({ order }: { order: Order }) {
                 >
                   {meta.label} <span className="font-medium text-muted">· {meta.bn}</span>
                 </p>
+
+                {stamp && (
+                  <p className="mt-0.5 text-[11px] font-medium text-muted">
+                    {formatDateTime(stamp)}
+                  </p>
+                )}
+
                 {current && (
                   <motion.p
                     initial={{ opacity: 0, y: 4 }}
@@ -277,7 +351,7 @@ function OrderTimeline({ order }: { order: Order }) {
                               : "অর্ডার সম্পন্ন"}
                   </motion.p>
                 )}
-                {i < currentIndex && (
+                {i < currentIndex && !stamp && (
                   <p className="text-[11px] text-muted">✓ সম্পন্ন</p>
                 )}
               </div>
@@ -286,6 +360,87 @@ function OrderTimeline({ order }: { order: Order }) {
         })}
       </ol>
     </div>
+  );
+}
+
+function LiveBadge({ source }: { source?: "realtime" | "poll" }) {
+  if (!REALTIME_ENABLED && !source) {
+    return (
+      <span className="badge bg-fg/5 text-muted" title="Supabase anon key নেই">
+        ⏱ অটো রিফ্রেশ
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className="badge bg-success/15 text-success"
+      title={source === "realtime" ? "Supabase Realtime" : "প্রতি ১৫ সেকেন্ডে চেক"}
+    >
+      <Radio className="mr-1 h-3 w-3" aria-hidden />
+      {source === "realtime" ? "লাইভ" : "অটো রিফ্রেশ"}
+    </span>
+  );
+}
+
+/* ---------------------- custom design preview ---------------------- */
+
+function CustomDesignPreview({ order }: { order: Order }) {
+  const spec = order.custom_spec;
+  if (!spec) return null;
+
+  const hasContent = Boolean(
+    spec.design_notes ||
+      spec.message_on_cake ||
+      spec.reference_image ||
+      spec.budget ||
+      hasCustomDesign(spec),
+  );
+  if (!hasContent) return null;
+
+  return (
+    <section className="card p-5">
+      <h2 className="mb-3 text-base font-extrabold">🎨 আপনার কাস্টম ডিজাইন</h2>
+
+      <div className="grid gap-4 sm:grid-cols-[auto_1fr]">
+        {spec.reference_image && (
+          // Arbitrary customer-supplied host, so it stays a plain <img>:
+          // next/image would reject hosts missing from remotePatterns.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={spec.reference_image}
+            alt="Reference design"
+            loading="lazy"
+            className="h-28 w-28 rounded-xl border border-line object-cover sm:h-32 sm:w-32"
+          />
+        )}
+
+        <dl className="space-y-2 text-sm">
+          {spec.message_on_cake && (
+            <div>
+              <dt className="text-xs font-semibold text-muted">কেকের লেখা</dt>
+              <dd className="mt-0.5 rounded-lg border border-dashed border-brand/40 bg-brand/6 px-3 py-1.5 font-semibold text-brand-strong">
+                ✍️ {spec.message_on_cake}
+              </dd>
+            </div>
+          )}
+          {spec.design_notes && (
+            <div>
+              <dt className="text-xs font-semibold text-muted">ডিজাইন নোট</dt>
+              <dd className="mt-0.5 whitespace-pre-line text-muted">{spec.design_notes}</dd>
+            </div>
+          )}
+          {spec.budget ? (
+            <div>
+              <dt className="text-xs font-semibold text-muted">বাজেট</dt>
+              <dd className="mt-0.5 font-semibold">{formatBDT(spec.budget)}</dd>
+            </div>
+          ) : null}
+        </dl>
+      </div>
+
+      <CustomDesignSummary spec={spec} />
+    </section>
   );
 }
 

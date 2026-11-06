@@ -3,6 +3,8 @@
 import { useState, useTransition, useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import { toast } from "react-toastify";
+import { confirmDialog } from "@/lib/confirm";
 import type { PromoCode } from "@/lib/types";
 import { cn, formatBDT, formatDate } from "@/lib/utils";
 import {
@@ -39,17 +41,40 @@ export function PromoManager({ promos, now }: { promos: PromoCode[]; now: number
     }
   }
 
-  function remove(p: PromoCode) {
-    if (!window.confirm(`${p.code} কোডটি মুছে ফেলতে চান?`)) return;
+  async function remove(p: PromoCode) {
+    const ok = await confirmDialog({
+      title: `${p.code} কোডটি মুছে ফেলবেন?`,
+      text: "এই কোডে আগের অর্ডারগুলো অক্ষত থাকবে।",
+      confirmText: "মুছে ফেলুন",
+    });
+    if (!ok) return;
     startRow(async () => {
+      const toastId = toast.loading("প্রোমো কোড মুছে ফেলা হচ্ছে...");
       const res = await deletePromoAction(p.id);
-      setRowMsg(res.error ? `⚠️ ${res.error}` : (res.success ?? null));
+      if (res.error) {
+        toast.update(toastId, {
+          render: res.error,
+          type: "error",
+          isLoading: false,
+          autoClose: 3500,
+        });
+        setRowMsg(`⚠️ ${res.error}`);
+      } else {
+        toast.update(toastId, {
+          render: res.success ?? "প্রোমো কোড মুছে ফেলা হয়েছে",
+          type: "success",
+          isLoading: false,
+          autoClose: 3500,
+        });
+        setRowMsg(res.success ?? null);
+      }
       router.refresh();
     });
   }
 
   function toggle(p: PromoCode) {
     startRow(async () => {
+      const toastId = toast.loading(p.is_active ? "প্রোমো কোড বন্ধ করা হচ্ছে..." : "প্রোমো কোড চালু করা হচ্ছে...");
       const fd = new FormData();
       fd.set("id", p.id);
       fd.set("code", p.code);
@@ -60,7 +85,23 @@ export function PromoManager({ promos, now }: { promos: PromoCode[]; now: number
       fd.set("expires_at", p.expires_at ?? "");
       if (!p.is_active) fd.set("is_active", "on");
       const res = await savePromoAction({}, fd);
-      setRowMsg(res.error ? `⚠️ ${res.error}` : (res.success ?? null));
+      if (res.error) {
+        toast.update(toastId, {
+          render: res.error,
+          type: "error",
+          isLoading: false,
+          autoClose: 3500,
+        });
+        setRowMsg(`⚠️ ${res.error}`);
+      } else {
+        toast.update(toastId, {
+          render: res.success ?? (p.is_active ? "প্রোমো কোড বন্ধ হয়েছে" : "প্রোমো কোড চালু হয়েছে"),
+          type: "success",
+          isLoading: false,
+          autoClose: 3500,
+        });
+        setRowMsg(res.success ?? null);
+      }
       router.refresh();
     });
   }

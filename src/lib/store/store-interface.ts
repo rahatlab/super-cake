@@ -5,6 +5,7 @@ import type {
   DashboardStats,
   Notification,
   Order,
+  OrderStatusHistory,
   Payment,
   Profile,
   PromoCode,
@@ -12,6 +13,8 @@ import type {
   Review,
   Settings,
   PhoneVerification,
+  EmailVerification,
+  UserOrderStats,
 } from "@/lib/types";
 
 export interface CreateOrderInput {
@@ -63,7 +66,8 @@ export interface Store {
   findUserByEmail(email: string): Promise<Profile | null>;
   findUserByPhone(phone: string): Promise<Profile | null>;
   getUserById(id: string): Promise<Profile | null>;
-  listUsers(): Promise<Profile[]>;
+  /** Newest first. `limit` keeps the dashboard preview from shipping every row. */
+  listUsers(opts?: { limit?: number }): Promise<Profile[]>;
   createUser(data: {
     name: string;
     phone: string;
@@ -76,6 +80,29 @@ export interface Store {
   getPasswordHash(userId: string): Promise<string | null>;
   /** Sets an already-hashed password. */
   updatePassword(userId: string, passwordHash: string): Promise<void>;
+  /**
+   * Update a customer's own profile fields (name, birthdate, anniversary…).
+   * `role` is intentionally absent — privilege escalation must not be possible
+   * through a profile edit.
+   */
+  updateProfile(
+    userId: string,
+    patch: Partial<Pick<Profile, "name" | "birthdate" | "anniversary_date">>,
+  ): Promise<Profile>;
+  /**
+   * Admin: Block or unblock a user to prevent/allow orders.
+   */
+  toggleUserBlock(userId: string, isBlocked: boolean): Promise<void>;
+  /**
+   * Stamp "a wish was sent for this date" so the daily cron never repeats it.
+   * Returns `true` only when *this* call won the stamp — the caller must skip
+   * the send when it returns `false` (another run already claimed the day).
+   */
+  markWishSent(
+    userId: string,
+    kind: "birthday" | "anniversary",
+    date: string,
+  ): Promise<boolean>;
 
   /* phone verification (WhatsApp self-send OTP) */
   savePhoneVerification(data: {
@@ -94,6 +121,23 @@ export interface Store {
     patch: Partial<PhoneVerification>,
   ): Promise<PhoneVerification>;
 
+  /* email verification (Resend OTP) */
+  saveEmailVerification(data: {
+    email: string;
+    purpose: EmailVerification["purpose"];
+    code_hash: string;
+    expires_at: string;
+    verified_at?: string | null;
+  }): Promise<EmailVerification>;
+  getLatestEmailVerification(
+    email: string,
+    purpose?: EmailVerification["purpose"],
+  ): Promise<EmailVerification | null>;
+  updateEmailVerification(
+    id: string,
+    patch: Partial<EmailVerification>,
+  ): Promise<EmailVerification>;
+
   /* cakes */
   listCakes(opts?: { includeInactive?: boolean }): Promise<Cake[]>;
   getCakeById(id: string): Promise<Cake | null>;
@@ -107,16 +151,26 @@ export interface Store {
   ): Promise<void>;
 
   /* orders */
-  listOrders(): Promise<Order[]>;
+  listOrders(opts?: { limit?: number }): Promise<Order[]>;
   getOrderById(id: string): Promise<Order | null>;
   getOrderByNo(orderNo: string): Promise<Order | null>;
   listOrdersByPhone(phone: string): Promise<Order[]>;
   listOrdersByUser(userId: string): Promise<Order[]>;
+  /**
+   * Aggregate one customer's orders (matched by user id and/or phone, so
+   * guest orders placed with the same number are counted too).
+   */
+  getOrderStatsForUser(key: { userId?: string; phone?: string }): Promise<UserOrderStats>;
   findOrderByIdempotencyKey(key: string): Promise<Order | null>;
   /** Link unclaimed guest orders with this phone to the user. */
   claimGuestOrders(userId: string, phone: string): Promise<number>;
   createOrder(input: CreateOrderInput): Promise<Order>;
   updateOrder(id: string, patch: Partial<Order>): Promise<Order>;
+  /** 🚩 Mark/unmark an order as a suspected fake order. */
+  setOrderFlag(orderId: string, flagged: boolean): Promise<void>;
+
+  /** Status transitions, oldest first. Used by the tracking timeline. */
+  listOrderStatusHistory(orderId: string): Promise<OrderStatusHistory[]>;
 
   /* stock */
   /** Atomically reserve stock for all lines; fails if any line is short. */
@@ -131,7 +185,7 @@ export interface Store {
   releaseReferral(orderId: string): Promise<void>;
 
   /* payments */
-  listPayments(): Promise<Payment[]>;
+  listPayments(opts?: { orderId?: string; trxId?: string }): Promise<Payment[]>;
   updatePayment(id: string, patch: Partial<Payment>): Promise<Payment>;
 
   /* promos */

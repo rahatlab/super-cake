@@ -15,6 +15,8 @@ import { OCCASIONS, ORDER_STATUS_META } from "@/lib/constants";
 import { formatBDT, formatDateTime, waLink, weightLabel } from "@/lib/utils";
 import { StatusControls } from "@/components/admin/status-controls";
 import { PaymentActions } from "@/components/admin/payment-actions";
+import { FlagToggle } from "@/components/admin/flag-toggle";
+import { CustomDesignSummary } from "@/components/order/custom-design-summary";
 
 export const metadata: Metadata = { title: "Order Details" };
 
@@ -28,7 +30,10 @@ export default async function AdminOrderDetailPage({
   const order = await store.getOrderById(id);
   if (!order) notFound();
 
-  const settings = await store.getSettings();
+  const [settings, history] = await Promise.all([
+    store.getSettings(),
+    store.listOrderStatusHistory(order.id),
+  ]);
   const meta = ORDER_STATUS_META[order.order_status];
   const occasion = OCCASIONS.find((o) => o.value === order.occasion);
 
@@ -50,10 +55,20 @@ export default async function AdminOrderDetailPage({
           <h1 className="mt-2 font-display text-2xl font-extrabold">{order.order_no}</h1>
           <p className="mt-1 text-xs text-muted">তৈরি হয়েছে {formatDateTime(order.created_at)}</p>
         </div>
-        <span className={`badge text-sm ${meta.color}`}>
-          {meta.label} · {meta.bn}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <FlagToggle orderId={order.id} flagged={order.is_flagged ?? false} />
+          <span className={`badge text-sm ${meta.color}`}>
+            {meta.label} · {meta.bn}
+          </span>
+        </div>
       </div>
+
+      {(order.is_flagged ?? false) && (
+        <div className="card flex items-center gap-2 border-amber-400/40 bg-amber-500/10 p-4 text-sm font-semibold text-amber-700 dark:text-amber-300">
+          🚩 এই অর্ডারটি সন্দেহজনক / ফেক হিসেবে চিহ্নিত — কাস্টমারের স্ট্যাটাসে
+          ফেক অর্ডার হিসেবে গোনা হচ্ছে।
+        </div>
+      )}
 
       <div className="grid gap-5 lg:grid-cols-[1.6fr_1fr]">
         {/* ---------------- left column ---------------- */}
@@ -198,6 +213,7 @@ export default async function AdminOrderDetailPage({
                     🎨 <strong>ডিজাইন:</strong> {order.custom_spec.design_notes}
                   </p>
                 )}
+                <CustomDesignSummary spec={order.custom_spec} />
                 {order.custom_spec.servings != null && (
                   <p className="mt-1">
                     👥 <strong>Servings:</strong> {order.custom_spec.servings}
@@ -274,7 +290,7 @@ export default async function AdminOrderDetailPage({
                 <dd>
                   <span
                     className={`badge ${
-                      order.payment_status === "paid"
+                      order.payment_status === "paid" || (order.order_status === "completed" && order.payment_method === "cod")
                         ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                         : order.payment_status === "pending_verify"
                           ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
@@ -283,7 +299,9 @@ export default async function AdminOrderDetailPage({
                             : "bg-line/60 text-muted"
                     }`}
                   >
-                    {order.payment_status.replace("_", " ")}
+                    {order.order_status === "completed" && order.payment_method === "cod"
+                      ? "paid"
+                      : order.payment_status.replace("_", " ")}
                   </span>
                 </dd>
               </div>
@@ -314,9 +332,15 @@ export default async function AdminOrderDetailPage({
               </p>
             )}
 
-            {order.payment_method === "cod" && (
+            {order.payment_method === "cod" && order.order_status !== "completed" && (
               <p className="mt-3 rounded-xl bg-accent/10 px-3 py-2 text-xs text-muted">
                 Cash on Delivery — ডেলিভারির সময় টাকা সংগ্রহ করুন।
+              </p>
+            )}
+
+            {order.payment_method === "cod" && order.order_status === "completed" && (
+              <p className="mt-3 rounded-xl bg-success/10 px-3 py-2 text-xs font-semibold text-success">
+                Cash on Delivery — টাকা সংগ্রহ সম্পন্ন হয়েছে ✅
               </p>
             )}
           </section>
@@ -343,6 +367,35 @@ export default async function AdminOrderDetailPage({
                 </div>
               )}
             </dl>
+          </section>
+
+          <section className="card p-5">
+            <h2 className="text-base font-extrabold">স্ট্যাটাস টাইমলাইন</h2>
+            {history.length === 0 ? (
+              <p className="mt-2 text-xs text-muted">কোনো স্ট্যাটাস হিস্ট্রি নেই।</p>
+            ) : (
+              <ol className="mt-3 space-y-3">
+                {history.map((h, i) => (
+                  <li key={h.id} className="flex gap-3">
+                    <span
+                      aria-hidden
+                      className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+                        i === history.length - 1 ? "bg-brand" : "bg-success/70"
+                      }`}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold">
+                        {ORDER_STATUS_META[h.status].label}{" "}
+                        <span className="font-medium text-muted">
+                          · {ORDER_STATUS_META[h.status].bn}
+                        </span>
+                      </p>
+                      <p className="text-[11px] text-muted">{formatDateTime(h.created_at)}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            )}
           </section>
         </div>
       </div>

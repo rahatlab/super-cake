@@ -1,45 +1,36 @@
-"use client";
+import type { CSSProperties, ReactNode } from "react";
 
-import { motion, type Variants } from "framer-motion";
-import type { ReactNode } from "react";
-
-const variants: Variants = {
-  hidden: { opacity: 0, y: 26, scale: 0.98 },
-  show: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { type: "spring", stiffness: 110, damping: 18, mass: 0.7 },
-  },
-};
-
-/** Scroll-triggered fade/rise wrapper used across the marketing pages. */
+/**
+ * Scroll/mount reveal — pure CSS, no framer-motion.
+ *
+ * The old `initial="hidden"` variant rendered `opacity: 0` into the HTML, so
+ * nothing below the fold was visible until the JS bundle loaded and the
+ * IntersectionObserver fired (bad for LCP and for no-JS readers). The CSS
+ * animation here starts from the server HTML and ends in the visible state,
+ * and the global `prefers-reduced-motion` rule disables it entirely.
+ */
 export function Reveal({
   children,
   delay = 0,
   className = "",
-  once = true,
 }: {
   children: ReactNode;
   delay?: number;
   className?: string;
+  /** Kept for API compatibility; the CSS animation always plays once. */
   once?: boolean;
 }) {
   return (
-    <motion.div
-      className={className}
-      variants={variants}
-      initial="hidden"
-      whileInView="show"
-      viewport={{ once, amount: 0.2 }}
-      transition={{ delay }}
+    <div
+      className={`${className} animate-reveal-up`}
+      style={{ animationDelay: `${delay}s` } as CSSProperties}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
-/** Animated counter — used for prices, ratings, totals. */
+/** Value pop-in used for prices, ratings and totals — CSS only. */
 export function AnimatedNumber({
   value,
   prefix = "",
@@ -50,15 +41,13 @@ export function AnimatedNumber({
   className?: string;
 }) {
   return (
-    <motion.span
+    <span
       key={value}
-      initial={{ y: 8, opacity: 0, filter: "blur(4px)" }}
-      animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
-      transition={{ type: "spring", stiffness: 340, damping: 26 }}
-      className={className}
+      className={`${className} inline-block animate-rise-in`}
+      style={{ animationDelay: "0s" } as CSSProperties}
     >
       {prefix}
       {new Intl.NumberFormat("en-BD").format(Math.round(value))}
-    </motion.span>
+    </span>
   );
 }

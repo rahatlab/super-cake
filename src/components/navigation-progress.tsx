@@ -9,7 +9,9 @@ export function NavigationProgress() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Navigation completed
+    // Navigation completed. `pathname`/`searchParams` are an external store
+    // (the Next router), so reacting with setState here is the intended use.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- router subscription
     setLoading(false);
   }, [pathname, searchParams]);
 

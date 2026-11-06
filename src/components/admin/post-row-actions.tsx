@@ -1,21 +1,43 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Trash2 } from "lucide-react";
+import { toast } from "react-toastify";
+import { confirmDialog } from "@/lib/confirm";
 import { deletePostAction } from "@/lib/actions/admin";
 
 /** Delete a blog post (with confirm) from the admin list. */
 export function PostRowActions({ postId, title }: { postId: string; title: string }) {
   const router = useRouter();
-  const [msg, setMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  function remove() {
-    if (!window.confirm(`"${title}" ব্লগটি মুছে ফেলতে চান?`)) return;
+  async function remove() {
+    if (pending) return;
+    const ok = await confirmDialog({
+      title: `"${title}" ব্লগটি মুছে ফেলবেন?`,
+      text: "মুছে ফেলার পর এটি আর ফিরে আসবে না।",
+      confirmText: "মুছে ফেলুন",
+    });
+    if (!ok) return;
     startTransition(async () => {
+      const toastId = toast.loading("ব্লগ মুছে ফেলা হচ্ছে...");
       const res = await deletePostAction(postId);
-      setMsg(res.error ? `⚠️ ${res.error}` : (res.success ?? null));
+      if (res.error) {
+        toast.update(toastId, {
+          render: res.error,
+          type: "error",
+          isLoading: false,
+          autoClose: 3500,
+        });
+      } else {
+        toast.update(toastId, {
+          render: res.success ?? `"${title}" মুছে ফেলা হয়েছে`,
+          type: "success",
+          isLoading: false,
+          autoClose: 3500,
+        });
+      }
       router.refresh();
     });
   }
@@ -36,7 +58,6 @@ export function PostRowActions({ postId, title }: { postId: string; title: strin
         )}
         Delete
       </button>
-      {msg && <span className="text-[11px] font-semibold text-muted">{msg}</span>}
     </div>
   );
 }

@@ -18,7 +18,9 @@ const now = Date.now();
 const iso = (offsetDays = 0) => new Date(now + offsetDays * 86400_000).toISOString();
 const day = (offsetDays = 0) => iso(offsetDays).slice(0, 10);
 
-function sizeRows(cakeId: string, base: number) {
+/** Standard size ladder derived from a cake's base price (shared by seeds and
+ * the auto-provisioned custom base cake). */
+export function sizeRows(cakeId: string, base: number) {
   return [
     { id: `${cakeId}-s05`, cake_id: cakeId, weight: 0.5, price: Math.round((base * 0.55) / 50) * 50, is_available: true },
     { id: `${cakeId}-s1`, cake_id: cakeId, weight: 1, price: base, is_available: true },

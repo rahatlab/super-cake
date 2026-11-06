@@ -3,10 +3,17 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import { ArrowRight, CakeSlice, Clock, Headphones, ShieldCheck, Truck } from "lucide-react";
 import { Suspense } from "react";
-import { getStore } from "@/lib/store";
+import {
+  getCachedCakeRatings,
+  getCachedSettings,
+  listCachedBanners,
+  listCachedCakes,
+  listCachedPosts,
+} from "@/lib/store/cache";
+import { getApprovedReviews } from "@/lib/store/queries";
 import { OCCASIONS, SITE } from "@/lib/constants";
 import { waLink } from "@/lib/utils";
-import { ldJson, productLd, breadcrumbLd } from "@/lib/seo";
+import { ldJson, breadcrumbLd } from "@/lib/seo";
 import { Hero } from "@/components/home/hero";
 import { OfferBanner } from "@/components/home/offer-banner";
 import { Testimonials } from "@/components/home/testimonials";
@@ -71,11 +78,7 @@ function TestimonialsSkeleton() {
 
 // Separate async components for progressive loading
 async function FeaturedCakes() {
-  const store = getStore();
-  const [cakes, ratings] = await Promise.all([
-    store.listCakes(),
-    store.getCakeRatings(),
-  ]);
+  const [cakes, ratings] = await Promise.all([listCachedCakes(), getCachedCakeRatings()]);
 
   const featured = cakes.filter((c) => c.is_featured).slice(0, 8);
   const shown = (featured.length ? featured : cakes).slice(0, 8);
@@ -101,14 +104,13 @@ async function FeaturedCakes() {
 }
 
 async function TestimonialsSection() {
-  const store = getStore();
-  const reviews = await store.listReviews({ approvedOnly: true });
+  // Shares the request-scoped cache with HomePage — one query, not two.
+  const reviews = await getApprovedReviews();
   return <Testimonials reviews={reviews.slice(0, 6)} />;
 }
 
 async function BlogPreview() {
-  const store = getStore();
-  const posts = await store.listPosts({ publishedOnly: true });
+  const posts = await listCachedPosts(true);
 
   if (posts.length === 0) return null;
 
@@ -154,15 +156,11 @@ async function BlogPreview() {
 }
 
 export default async function HomePage() {
-  const store = getStore();
   // Only fetch critical data for initial render
-  const [settings, banners] = await Promise.all([
-    store.getSettings(),
-    store.listBanners({ activeOnly: true }),
-  ]);
+  const [settings, banners] = await Promise.all([getCachedSettings(), listCachedBanners(true)]);
 
   // Calculate reviews stats for hero
-  const reviews = await store.listReviews({ approvedOnly: true });
+  const reviews = await getApprovedReviews();
   const avgAll = reviews.length
     ? Math.round((reviews.reduce((s, r) => s + r.rating, 0) / reviews.length) * 10) / 10
     : 0;

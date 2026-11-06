@@ -1,11 +1,12 @@
 "use client";
 
-import { startTransition, useActionState, useState } from "react";
+import { startTransition, useActionState, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 import { Eye, Loader2, Plus, Trash2 } from "lucide-react";
-import { CATEGORIES, FLAVORS, OCCASIONS, WEIGHTS } from "@/lib/constants";
+import { CATEGORIES, FLAVORS, MAX_CAKE_IMAGES, OCCASIONS, WEIGHTS } from "@/lib/constants";
 import { formatBDT, weightLabel } from "@/lib/utils";
 import { saveCakeAction, uploadImagesAction, type ActionState } from "@/lib/actions/admin";
 import type { Cake, Occasion } from "@/lib/types";
@@ -37,6 +38,20 @@ export function CakeForm({ cake }: { cake?: Cake }) {
   const [uploadError, setUploadError] = useState("");
   const [desc, setDesc] = useState(cake?.description ?? "");
 
+  /**
+   * Synchronous double-submit lock. React state (`pending`) only flips after a
+   * re-render, so two clicks inside the same frame both reached `formAction`
+   * and created the cake twice. The ref is read/written before any `await`, so
+   * the second click is rejected in the same tick.
+   */
+  const submitLock = useRef(false);
+
+  // The action has settled (state is a fresh object per call) — allow saving
+  // again. Early validation failures release the lock in onSubmit's finally.
+  useEffect(() => {
+    submitLock.current = false;
+  }, [state]);
+
   const basePrice =
     sizes.find((s) => s.weight === 1)?.price || sizes.find((s) => s.price > 0)?.price || 0;
 
@@ -56,51 +71,88 @@ export function CakeForm({ cake }: { cake?: Cake }) {
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+
+    // Synchronous re-entry guard. `disabled={busy}` only flips after React
+    // re-renders, so two clicks inside the same tick both dispatched the save
+    // and created the cake twice. A ref is read/written before any await, so
+    // the second click is dropped immediately.
+    if (submitLock.current) return;
+    submitLock.current = true;
+
     const fd = new FormData(e.currentTarget);
     setUploadError("");
 
     let urls = [...images];
+    let dispatched = false;
 
-    // 1. upload any picked files first
-    const files = fd.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
-    if (files.length) {
-      setUploading(true);
-      const up = new FormData();
-      for (const f of files) up.append("images", f);
-      const res = await uploadImagesAction(up);
-      setUploading(false);
-      if (res.error) {
-        setUploadError(res.error);
+    try {
+      // 1. upload any picked files first
+      const files = fd.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
+      if (files.length) {
+        // Bail before uploading — the validator would reject the save anyway.
+        if (images.length + files.length > MAX_CAKE_IMAGES) {
+          setUploadError(
+            `সর্বোচ্চ ${MAX_CAKE_IMAGES} টি ছবি রাখা যায় — আপনার ইতিমধ্যে ${images.length} টি আছে। আগে কিছু মুছে ফেলুন।`,
+          );
+          return;
+        }
+        setUploading(true);
+        const up = new FormData();
+        for (const f of files) up.append("images", f);
+        const res = await uploadImagesAction(up);
+        setUploading(false);
+        if (res.error) {
+          setUploadError(res.error);
+          return;
+        }
+        urls = [...urls, ...res.urls];
+      }
+
+      // 2. merge manually pasted URLs
+      const pasted = urlText
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      urls = Array.from(new Set([...urls, ...pasted]));
+
+      if (!urls.length) {
+        setUploadError("অন্তত একটা ছবি দিন — ফাইল আপলোড অথবা ইমেজ URL");
         return;
       }
-      urls = [...urls, ...res.urls];
+
+      if (urls.length > MAX_CAKE_IMAGES) {
+        setUploadError(
+          `সর্বোচ্চ ${MAX_CAKE_IMAGES} টি ছবি রাখা যায় — এখন ${urls.length} টি হয়ে গেছে। কিছু মুছে ফেলুন।`,
+        );
+        return;
+      }
+
+      // 3. sync JSON hidden fields and dispatch the save action
+      fd.set("image_urls", JSON.stringify(urls));
+      fd.set("occasions", JSON.stringify(occasions));
+      fd.set("sizes", JSON.stringify(sizes.filter((s) => s.price > 0)));
+      fd.set("base_price", String(basePrice));
+      setImages(urls);
+
+      dispatched = true;
+      startTransition(() => {
+        formAction(fd);
+      });
+    } finally {
+      // Validation failures never dispatch an action, so nothing would ever
+      // flip the lock back — release it here. A real save keeps the lock until
+      // the action settles (see the useEffect on `state` above).
+      if (!dispatched) submitLock.current = false;
     }
-
-    // 2. merge manually pasted URLs
-    const pasted = urlText
-      .split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    urls = Array.from(new Set([...urls, ...pasted]));
-
-    if (!urls.length) {
-      setUploadError("অন্তত একটা ছবি দিন — ফাইল আপলোড অথবা ইমেজ URL");
-      return;
-    }
-
-    // 3. sync JSON hidden fields and dispatch the save action
-    fd.set("image_urls", JSON.stringify(urls));
-    fd.set("occasions", JSON.stringify(occasions));
-    fd.set("sizes", JSON.stringify(sizes.filter((s) => s.price > 0)));
-    fd.set("base_price", String(basePrice));
-    setImages(urls);
-
-    startTransition(() => {
-      formAction(fd);
-    });
   }
 
   const busy = uploading || pending;
+
+  // Confirmation toast for the save result (react-toastify).
+  useEffect(() => {
+    if (state.success) toast.success(state.success);
+    else if (state.error) toast.error(state.error);
+  }, [state]);
 
   return (
     <div className="space-y-6">

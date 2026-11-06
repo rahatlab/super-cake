@@ -1,5 +1,4 @@
-import { getStore } from "@/lib/store";
-import { getCurrentUser } from "@/lib/auth";
+import { getCachedSettings } from "@/lib/store/cache";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { CartDrawer } from "@/components/cart/cart-drawer";
@@ -7,8 +6,10 @@ import { CartReminder } from "@/components/cart/cart-reminder";
 import { organizationLd, ldJson, websiteLd } from "@/lib/seo";
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  const store = getStore();
-  const [settings, user] = await Promise.all([store.getSettings(), getCurrentUser()]);
+  // No `cookies()` here on purpose: the session probe lives in /api/me and the
+  // header fetches it client-side. Anything request-scoped in this layout would
+  // opt the whole (site) group out of static rendering.
+  const settings = await getCachedSettings();
 
   return (
     <>
@@ -21,7 +22,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         dangerouslySetInnerHTML={{ __html: ldJson(websiteLd(settings)) }}
       />
 
-      <Header user={user ? { name: user.name, role: user.role } : null} />
+      <Header />
       <main className="flex-1">{children}</main>
       <Footer settings={settings} />
       <CartDrawer />

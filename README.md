@@ -26,7 +26,8 @@ Runs out of the box with **zero configuration** — no database account needed t
 - **Order tracking** with animated status timeline
 - **Review after delivery** — the form only unlocks once status is `delivered`
 - Blog with reading time, share/copy link, JSON-LD
-- Account page: profile, order history, quick track/review links
+- Account page: profile, order history, quick track/review links, **birthday & anniversary
+  dates** that trigger an auto-wish with a promo code
 - **Free phone verification** — customers verify with a WhatsApp message
   (`VERIFY-XXXXXX`), so no SMS or paid authentication template is required
 
@@ -42,6 +43,10 @@ Runs out of the box with **zero configuration** — no database account needed t
 - Reviews moderation (approve / delete)
 - Blog editor (title, excerpt, markdown content, cover, SEO title/description, publish)
 - Offer banner editor with countdown
+- **WhatsApp message log** (`/admin/whatsapp`): every outbound message with its
+  `sent → delivered → read → failed` lifecycle, template name, recipient and
+  Meta's error text, filterable by status — plus a **catalog sync** button that
+  pushes the cake list into the Meta catalog (result shown as a toast)
 - Settings: store info, **delivery charge + free rule**, payment toggles, social links
 
 ### Quality
@@ -54,6 +59,9 @@ Runs out of the box with **zero configuration** — no database account needed t
   CSP / HSTS / nosniff / frame-options headers, secrets in `.env.local` only
 - **Performance**: AVIF/WebP via `next/image`, lazy galleries, code-split charts,
   `prefers-reduced-motion` respected everywhere
+- **UX**: `react-toastify` confirmations for every admin action (save, delete,
+  status/payment changes, catalog sync) plus a synchronous double-submit lock on
+  the cake form, so a double click can never create the same cake twice
 
 ---
 
@@ -87,6 +95,12 @@ The app ships with **two interchangeable stores behind one interface**
    2. `supabase/whatsapp-automation.sql` — automation tables/columns
    3. `supabase/phase-fixes.sql` — idempotency, stock/promo/referral RPCs,
       phone verification and unique indexes
+   4. `supabase/phase-indexes.sql` — extra performance indexes
+   5. `supabase/phase-realtime.sql` — read-only order tracking channel
+   6. `supabase/whatsapp-delivery-status.sql` — Meta delivery/read receipts +
+      the admin message log
+   7. `supabase/profile-milestones.sql` — birthday/anniversary columns for the
+      auto-wish cron (safe to re-run)
 
    > `phase-fixes.sql` creates unique indexes on `lower(email)` and the last 10
    > digits of `profiles.phone`. If the project already has duplicate
@@ -146,17 +160,23 @@ WHATSAPP_FROM_NUMBER=...    # Your business number (digits only)
 WHATSAPP_WABA_ID=...        # WhatsApp Business Account ID
 WHATSAPP_VERIFY_TOKEN=...   # Random string used by the Meta webhook
 WHATSAPP_APP_SECRET=...     # Meta App Dashboard → Settings → Basic
+WHATSAPP_CATALOG_ID=...     # Commerce catalog (catalog sync + catalog orders)
+WHATSAPP_CATALOG_CATEGORY=Food & Beverage > Baked Goods > Cakes & Pastries
+WHATSAPP_CATALOG_CURRENCY=BDT
 WHATSAPP_TEMPLATES_ENABLED=false
 WHATSAPP_TEMPLATE_LANG=bn
 WHATSAPP_AUTOMATION_ENABLED=true
 CRON_SECRET=...             # Protects /api/cron/abandoned-carts
 ```
 
-Then run `supabase/whatsapp-automation.sql` and `supabase/phase-fixes.sql` in the
+Then run `supabase/whatsapp-automation.sql`, `supabase/phase-fixes.sql`,
+`supabase/whatsapp-delivery-status.sql` and `supabase/profile-milestones.sql` in the
 Supabase **SQL Editor** (after `schema.sql`, in that order). The first adds
 `orders.review_requested_at`, `whatsapp_messages`, `abandoned_carts` and
-`whatsapp_opt_outs`; the second adds phone verification, idempotency and the
-atomic stock/promo/referral functions.
+`whatsapp_opt_outs`; the second adds phone verification, idempotency and the atomic
+stock/promo/referral functions; the third adds `whatsapp_messages.meta_message_id` so
+Meta's delivery receipts can be matched back to the row we wrote; the fourth adds the
+`profiles.birthdate / anniversary_date / last_*_wish` columns behind the auto-wish cron.
 
 What runs automatically:
 
@@ -165,11 +185,28 @@ What runs automatically:
 - **Delivered/completed** → one-time review request (tracked by `review_requested_at`)
 - **Customer WhatsApp reply** → menu / order status / contact auto-reply via the webhook
 - **`VERIFY-XXXXXX`** → free phone verification for registration/password reset/guest claim
-- **`START` / `STOP`** → abandoned-cart reminder opt-in / opt-out
+- **`START` / `STOP`** → abandoned-cart reminder opt-in / opt-out (STOP also suppresses wishes)
 - **Abandoned checkout** → opt-in reminder via the daily Vercel cron
+- **Catalog order** (`type: "order"` webhook) → items matched by `retailer_id` (= cake
+  slug) become a real pending order: stock reserved best-effort, customer asked for
+  address + delivery date, admin notified
+- **Birthday / anniversary** → daily wish with a freshly minted single-use promo code
+  (`BDAY1103XXXX` / `ANNIV1103XXXX`), one per year, stamped *before* the send so a
+  crash can never duplicate it
+- **Delivery receipts** → Meta's `statuses` callbacks move each log row through
+  `sent → delivered → read` (or `failed` with Meta's error), visible on
+  `/admin/whatsapp`
+
+Order messages carry a structured summary (items, delivery date + slot, payment
+state, total and a track link) rather than a single sentence. Greetings and
+"didn't understand" replies are sent as **interactive quick-reply buttons**
+(`অর্ডার স্ট্যাটাস` · `কেক মেনু` · `যোগাযোগ`) — valid only inside the 24-hour
+window, which is where auto-replies always run — and fall back to the numbered
+text menu if Meta rejects the interactive payload. Inbound messages are also
+marked read, so the customer sees blue ticks immediately.
 
 Meta only delivers business-initiated messages outside the 24-hour customer-service
-window with an **approved template**. Create the five templates once the WABA is healthy:
+window with an **approved template**. Create the seven templates once the WABA is healthy:
 
 ```bash
 npm run wa:health            # diagnose ban / payment / verification / display name
@@ -185,8 +222,16 @@ free-form text, which only works inside the 24h window or for Meta test recipien
 and subscribe to the `messages` field. Set `WHATSAPP_APP_SECRET` so POST signatures are
 verified (required in production).
 
+**Catalog:** `npm run wa:templates` aside, connect a Meta **Commerce catalog** to the
+WhatsApp account and set `WHATSAPP_CATALOG_ID`. `/admin/whatsapp` → *ক্যাটালগে আপডেট*
+pushes every cake (price in the catalog's base unit, `retailer_id` = slug, `availability`
+follows the active flag). Customers can then order straight from the shared catalog in a
+chat and Meta sends an `order` webhook, which is turned into a pending store order.
+
 **Cron:** `vercel.json` runs `/api/cron/abandoned-carts` daily at 06:00 UTC (Hobby plan
 allows one run per day). Vercel automatically sends `Authorization: Bearer $CRON_SECRET`.
+The same run sends the day's birthday/anniversary wishes first — a wish is stamped before
+its send (never retried), while a missed cart reminder simply retries tomorrow.
 
 ---
 
@@ -203,6 +248,7 @@ allows one run per day). Vercel automatically sends `Authorization: Bearer $CRON
 | `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_ID` / `WHATSAPP_FROM_NUMBER` | optional | Cloud API sending + OTP webhook |
 | `WHATSAPP_WABA_ID` / `WHATSAPP_VERIFY_TOKEN` / `WHATSAPP_APP_SECRET` | optional | Templates + webhook |
 | `WHATSAPP_TEMPLATES_ENABLED` / `WHATSAPP_TEMPLATE_LANG` | optional | Template sending (enable after approval) |
+| `WHATSAPP_CATALOG_ID` / `WHATSAPP_CATALOG_CATEGORY` / `WHATSAPP_CATALOG_CURRENCY` | optional | Meta catalog sync + catalog orders (`WHATSAPP_CATALOG_ID` required for those two) |
 | `WHATSAPP_AUTOMATION_ENABLED` | optional | Master switch for automatic sends |
 | `CRON_SECRET` | optional | Bearer token for the abandoned-cart cron |
 
@@ -273,12 +319,16 @@ Everything else (build, hosting, bandwidth, SSL, storage) stays on the free tier
 - [ ] Rotate the WhatsApp access token in Meta Business Suite
 - [ ] Set a strong unique `AUTH_SECRET` and a separate `OTP_SECRET`
 - [ ] Set `NEXT_PUBLIC_SITE_URL` to your real domain
-- [ ] Run `schema.sql` → `whatsapp-automation.sql` → `phase-fixes.sql`, dedupe
-      profile emails/phones first, then switch off demo mode
+- [ ] Run `schema.sql` → `whatsapp-automation.sql` → `phase-fixes.sql` →
+      `phase-indexes.sql` → `phase-realtime.sql` → `whatsapp-delivery-status.sql` →
+      `profile-milestones.sql`, dedupe profile emails/phones first, then
+      switch off demo mode
 - [ ] Keep `OTP_DEV_AUTO_VERIFY=false` and `ALLOW_LOCAL_STORE` unset
 - [ ] Set `WHATSAPP_APP_SECRET`, configure the Meta webhook, and verify GET/POST
       (including a real `VERIFY-XXXXXX` reply before launch)
 - [ ] Create + approve WhatsApp templates, then set `WHATSAPP_TEMPLATES_ENABLED=true`
+- [ ] Connect a Meta Commerce catalog, set `WHATSAPP_CATALOG_ID`, then run
+      *ক্যাটালগে আপডেট* from `/admin/whatsapp` and verify an `order` webhook arrives
 - [ ] Set `CRON_SECRET` in Vercel and confirm the cron run
 - [ ] Replace placeholder cake images with real photos (admin → Cakes → upload)
 - [ ] Set your real bKash number + delivery charge in **Settings**

@@ -6,6 +6,7 @@ import type {
   DashboardStats,
   Notification,
   Order,
+  OrderStatusHistory,
   Payment,
   Profile,
   PromoCode,
@@ -13,8 +14,9 @@ import type {
   Review,
   Settings,
   PhoneVerification,
+  EmailVerification,
 } from "@/lib/types";
-import { generateOrderNo, ORDER_NO_RE, phoneKey } from "@/lib/utils";
+import { generateOrderNo, ORDER_NO_RE, phoneKey, slugBase, pickUniqueSlug } from "@/lib/utils";
 import { SEED_SETTINGS } from "./seed";
 import type {
   CreateOrderInput,
@@ -54,6 +56,32 @@ function err(e: { message: string } | null): never {
   throw new Error(e?.message || "Database error");
 }
 
+/**
+ * First free slug derived from `base` (`name`, `-2`, `-3`, ...).
+ *
+ * `cakes.slug` and `blog_posts.slug` are UNIQUE, so two admins (or one
+ * double-click) saving the same title would otherwise surface Postgres' raw
+ * constraint text in the UI.
+ */
+async function nextUniqueSlug(
+  table: "cakes" | "blog_posts",
+  base: string,
+  excludeId?: string,
+): Promise<string> {
+  const { data, error } = await db().from(table).select("id, slug").like("slug", `${base}%`);
+  if (error) err(error);
+
+  return pickUniqueSlug(
+    base,
+    (data ?? []).filter((r) => r.id !== excludeId).map((r) => String(r.slug)),
+  );
+}
+
+/** True when Postgres rejected a UNIQUE/PRIMARY KEY constraint. */
+function isDuplicate(e: { code?: string; message?: string }): boolean {
+  return e.code === "23505" || /duplicate key/i.test(e.message ?? "");
+}
+
 /* ---------------- settings (single row table) ---------------- */
 
 async function getSettingsRow(): Promise<Settings> {
@@ -65,10 +93,16 @@ async function getSettingsRow(): Promise<Settings> {
 /* ---------------- stats ---------------- */
 
 async function dashboardStats(): Promise<DashboardStats> {
+  // Only the columns the aggregates need — `select("*")` used to pull every
+  // order's items JSON, address and notes just to count and sum them.
+  type StatOrder = Pick<
+    Order,
+    "order_status" | "payment_status" | "occasion" | "payment_method" | "total" | "created_at"
+  >;
+
   const { data: orders, error } = await db()
     .from("orders")
-    .select("*")
-    .order("created_at", { ascending: false });
+    .select("order_status, payment_status, occasion, payment_method, total, created_at");
   if (error) err(error);
 
   const { data: cakes, error: ce } = await db().from("cakes").select("id, is_active");
@@ -80,7 +114,13 @@ async function dashboardStats(): Promise<DashboardStats> {
   const { data: promos, error: pe } = await db().from("promo_codes").select("code, used_count");
   if (pe) err(pe);
 
-  const all = (orders ?? []) as Order[];
+  const { data: users, error: ue } = await db().from("profiles").select("created_at");
+  if (ue) err(ue);
+
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const allUsers = (users ?? []) as { created_at: string }[];
+
+  const all = (orders ?? []) as StatOrder[];
   const active = all.filter((o) => o.order_status !== "cancelled");
   const delivered = all.filter((o) => ["delivered", "completed"].includes(o.order_status));
   const realized = all.filter(
@@ -115,6 +155,8 @@ async function dashboardStats(): Promise<DashboardStats> {
     total_products: ((cakes ?? []) as Cake[]).filter((c) => c.is_active).length,
     total_reviews: approved.length,
     avg_rating: avg,
+    total_users: allUsers.length,
+    new_users_7d: allUsers.filter((u) => Date.parse(u.created_at) >= weekAgo).length,
     orders_by_occasion: [...occasionMap.entries()].map(([name, value]) => ({ name, value })),
     orders_by_payment: [...paymentMap.entries()].map(([name, value]) => ({ name, value })),
     promo_usage: ((promos ?? []) as PromoCode[]).map((p) => ({ name: p.code, value: p.used_count })),
@@ -170,8 +212,10 @@ export const supabaseStore: Store = {
     if (error) err(error);
     return (data as Profile) ?? null;
   },
-  async listUsers() {
-    const { data, error } = await db().from("profiles").select("*").order("created_at", { ascending: false });
+  async listUsers(opts) {
+    let q = db().from("profiles").select("*").order("created_at", { ascending: false });
+    if (opts?.limit) q = q.limit(opts.limit);
+    const { data, error } = await q;
     if (error) err(error);
     return (data ?? []) as Profile[];
   },
@@ -209,6 +253,63 @@ export const supabaseStore: Store = {
       .update({ password_hash: passwordHash })
       .eq("id", userId);
     if (error) err(error);
+  },
+  async updateProfile(userId, patch) {
+    const row: Record<string, unknown> = {};
+    // Column allow-list — never spread `patch` straight into the UPDATE, or a
+    // crafted payload could write `role`.
+    if (patch.name !== undefined) row.name = patch.name;
+    if (patch.birthdate !== undefined) row.birthdate = patch.birthdate || null;
+    if (patch.anniversary_date !== undefined) row.anniversary_date = patch.anniversary_date || null;
+    if (Object.keys(row).length === 0) return (await this.getUserById(userId)) as Profile;
+
+    const { data, error } = await db()
+      .from("profiles")
+      .update(row)
+      .eq("id", userId)
+      .select("*")
+      .single();
+    if (error) err(error);
+    return data as Profile;
+  },
+  async toggleUserBlock(userId, isBlocked) {
+    const { error } = await db()
+      .from("profiles")
+      .update({ is_blocked: isBlocked })
+      .eq("id", userId);
+    if (error) err(error);
+  },
+  async markWishSent(userId, kind, date) {
+    const column = kind === "birthday" ? "last_birthday_wish" : "last_anniversary_wish";
+
+    const { data, error } = await db()
+      .from("profiles")
+      .select(`${column}`)
+      .eq("id", userId)
+      .maybeSingle();
+    if (error) {
+      console.warn("[wishes] read failed:", error.message);
+      return false;
+    }
+    const current = (data as Record<string, string | null> | null)?.[column] ?? null;
+    // Already stamped for *this* date: another run claimed the day. An older
+    // year's stamp must be overwritten, or it would never advance.
+    if (current === date) return false;
+
+    // The `is null OR <> today` guard makes the write single-statement atomic:
+    // of two overlapping cron runs, Postgres re-evaluates it for the loser and
+    // matches zero rows.
+    const { data: updated, error: writeError } = await db()
+      .from("profiles")
+      .update({ [column]: date })
+      .eq("id", userId)
+      .or(`${column}.is.null,${column}.neq.${date}`)
+      .select(`${column}`);
+    if (writeError) {
+      console.warn("[wishes] stamp failed:", writeError.message);
+      return false;
+    }
+    return (updated ?? []).length === 1;
   },
 
   /* phone verification */
@@ -253,6 +354,48 @@ export const supabaseStore: Store = {
     return data as PhoneVerification;
   },
 
+  /* email verification */
+  async saveEmailVerification(data) {
+    const { data: row, error } = await db()
+      .from("email_verifications")
+      .insert({
+        email: data.email,
+        email_key: data.email.trim().toLowerCase(),
+        purpose: data.purpose,
+        code_hash: data.code_hash,
+        expires_at: data.expires_at,
+        attempts: 0,
+        verified_at: data.verified_at ?? null,
+        created_at: new Date().toISOString(),
+      })
+      .select("*")
+      .single();
+    if (error) err(error);
+    return row as EmailVerification;
+  },
+  async getLatestEmailVerification(email, purpose) {
+    let q = db()
+      .from("email_verifications")
+      .select("*")
+      .eq("email_key", email.trim().toLowerCase())
+      .order("created_at", { ascending: false })
+      .limit(1);
+    if (purpose) q = q.eq("purpose", purpose);
+    const { data, error } = await q.maybeSingle();
+    if (error) err(error);
+    return (data as EmailVerification) ?? null;
+  },
+  async updateEmailVerification(id, patch) {
+    const { data, error } = await db()
+      .from("email_verifications")
+      .update(patch)
+      .eq("id", id)
+      .select("*")
+      .maybeSingle();
+    if (error) err(error);
+    return data as EmailVerification;
+  },
+
   async listCakes(opts) {
     let q = db().from("cakes").select("*").order("created_at", { ascending: false });
     if (!opts?.includeInactive) q = q.eq("is_active", true);
@@ -275,32 +418,64 @@ export const supabaseStore: Store = {
     const { data, error } = await db().from("cakes").select("*").eq("slug", slug).maybeSingle();
     if (error) err(error);
     if (!data) return null;
-    return hydrateCake((data as Cake).id);
+    // The row is already in hand — only the sizes still need fetching.
+    // (Calling hydrateCake() here re-read the same cake a second time.)
+    const cake = data as Cake;
+    const { data: sizes, error: sizesError } = await db()
+      .from("cake_sizes")
+      .select("*")
+      .eq("cake_id", cake.id)
+      .order("weight");
+    if (sizesError) err(sizesError);
+    return { ...cake, sizes: (sizes ?? []) as Cake["sizes"] };
   },
   async createCake(data) {
-    const payload = {
-      name: data.name,
-      slug: data.slug || data.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
-      description: data.description,
-      flavor: data.flavor,
-      category: data.category,
-      occasions: data.occasions,
-      image_urls: data.image_urls,
-      base_price: data.base_price,
-      is_custom_available: data.is_custom_available,
-      is_featured: data.is_featured,
-      is_active: data.is_active,
-      stock: data.stock,
-      created_at: new Date().toISOString(),
-    };
-    const { data: row, error } = await db().from("cakes").insert(payload).select("*").single();
-    if (error) err(error);
-    return { ...(row as Cake), sizes: [] };
+    const base = data.slug || slugBase(data.name, "cake");
+
+    // Pre-check for a free slug, then retry on the off chance another writer
+    // grabs it between the SELECT and the INSERT.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const slug = await nextUniqueSlug("cakes", base);
+      const payload = {
+        name: data.name,
+        slug,
+        description: data.description,
+        flavor: data.flavor,
+        category: data.category,
+        occasions: data.occasions,
+        image_urls: data.image_urls,
+        base_price: data.base_price,
+        is_custom_available: data.is_custom_available,
+        is_featured: data.is_featured,
+        is_active: data.is_active,
+        stock: data.stock,
+        created_at: new Date().toISOString(),
+      };
+      const { data: row, error } = await db().from("cakes").insert(payload).select("*").single();
+      if (!error) return { ...(row as Cake), sizes: [] };
+      if (!isDuplicate(error)) err(error);
+    }
+    throw new Error("এই নামে কেক ইতিমধ্যে আছে — নাম একটু আলাদা করে আবার চেষ্টা করুন।");
   },
   async updateCake(id, patch) {
-    const { error } = await db().from("cakes").update(patch).eq("id", id);
-    if (error) err(error);
-    return (await hydrateCake(id)) as Cake;
+    let next: Partial<Cake> = patch;
+
+    // An explicit slug change must stay unique too (the admin form derives
+    // slugs from the name and never sends one, so this is the safety net).
+    if (patch.slug !== undefined) {
+      const base = patch.slug || slugBase(patch.name ?? "", "cake");
+      const slug = await nextUniqueSlug("cakes", base, id);
+      if (slug !== patch.slug) next = { ...patch, slug };
+    }
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { error } = await db().from("cakes").update(next).eq("id", id);
+      if (!error) return (await hydrateCake(id)) as Cake;
+      if (!isDuplicate(error)) err(error);
+      // Slug raced another writer — pick a fresh one and try again.
+      if (next.slug !== undefined) next = { ...next, slug: await nextUniqueSlug("cakes", next.slug, id) };
+    }
+    throw new Error("সেভ করা যায়নি — স্লাগ ইতিমধ্যে ব্যবহৃত হয়েছে। আবার চেষ্টা করুন।");
   },
   async deleteCake(id) {
     await db().from("cake_sizes").delete().eq("cake_id", id);
@@ -321,8 +496,10 @@ export const supabaseStore: Store = {
     if (one) await db().from("cakes").update({ base_price: one.price }).eq("id", cakeId);
   },
 
-  async listOrders() {
-    const { data, error } = await db().from("orders").select("*").order("created_at", { ascending: false });
+  async listOrders(opts) {
+    let q = db().from("orders").select("*").order("created_at", { ascending: false });
+    if (typeof opts?.limit === "number" && opts.limit > 0) q = q.limit(opts.limit);
+    const { data, error } = await q;
     if (error) err(error);
     return (data ?? []) as Order[];
   },
@@ -358,6 +535,55 @@ export const supabaseStore: Store = {
       .order("created_at", { ascending: false });
     if (error) err(error);
     return (data ?? []) as Order[];
+  },
+  async getOrderStatsForUser(key) {
+    // Matched by user id and/or phone so guest orders placed with the same
+    // number count towards the same customer.
+    type Row = { id: string; order_status: string; total: number; is_flagged?: boolean | null };
+    const byId = new Map<string, Row>();
+    const collect = (rows: Row[] | null) => {
+      for (const r of rows ?? []) if (r?.id) byId.set(r.id, r);
+    };
+
+    if (key.userId) {
+      const { data, error } = await db()
+        .from("orders")
+        .select("id, order_status, total, is_flagged")
+        .eq("user_id", key.userId);
+      if (error && (error.code === "PGRST204" || /does not exist/i.test(error.message))) {
+        // `is_flagged` ships with phase-admin-users.sql — until that migration
+        // is run, degrade to unflagged stats instead of breaking the screen.
+        const retry = await db()
+          .from("orders")
+          .select("id, order_status, total")
+          .eq("user_id", key.userId);
+        if (retry.error) err(retry.error);
+        collect(retry.data as Row[]);
+      } else if (error) {
+        err(error);
+      } else {
+        collect(data as Row[]);
+      }
+    }
+
+    if (key.phone && phoneKey(key.phone).length >= 10) {
+      const { data, error } = await db().rpc("list_orders_by_phone_key", {
+        p_key: phoneKey(key.phone),
+      });
+      if (error) err(error);
+      collect(data as Row[]);
+    }
+
+    const rows = [...byId.values()];
+    return {
+      total: rows.length,
+      cancelled: rows.filter((r) => r.order_status === "cancelled").length,
+      delivered: rows.filter((r) => ["delivered", "completed"].includes(r.order_status)).length,
+      flagged: rows.filter((r) => r.is_flagged).length,
+      spent: rows
+        .filter((r) => r.order_status !== "cancelled")
+        .reduce((s, r) => s + (r.total ?? 0), 0),
+    };
   },
   async findOrderByIdempotencyKey(key) {
     if (!key) return null;
@@ -433,13 +659,79 @@ export const supabaseStore: Store = {
       created_at: new Date().toISOString(),
     });
 
+    // Timeline seed row. Best effort: a missing migration must not fail the
+    // order (the UI falls back to the order's own created_at).
+    const { error: he } = await db().from("order_status_history").insert({
+      order_id: (data as Order).id,
+      status: "pending",
+    });
+    if (he) console.warn("[store] order_status_history insert failed:", he.message);
+
     return data as Order;
   },
   async updateOrder(id, patch) {
-    const { error } = await db().from("orders").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", id);
+    // Read the old status first — the timeline needs the transition, not the
+    // final value.
+    let previousStatus: string | null = null;
+    if (patch.order_status) {
+      const { data: before } = await db()
+        .from("orders")
+        .select("order_status")
+        .eq("id", id)
+        .maybeSingle();
+      previousStatus = (before?.order_status as string) ?? null;
+    }
+
+    const { error } = await db()
+      .from("orders")
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq("id", id);
     if (error) err(error);
+
+    if (patch.order_status && previousStatus && previousStatus !== patch.order_status) {
+      const { error: he } = await db().from("order_status_history").insert({
+        order_id: id,
+        status: patch.order_status,
+      });
+      if (he) console.warn("[store] order_status_history insert failed:", he.message);
+    }
+
     const { data } = await db().from("orders").select("*").eq("id", id).maybeSingle();
     return data as Order;
+  },
+  async setOrderFlag(orderId, flagged) {
+    const { error } = await db()
+      .from("orders")
+      .update({ is_flagged: flagged, updated_at: new Date().toISOString() })
+      .eq("id", orderId);
+    if (error) err(error);
+  },
+
+  async listOrderStatusHistory(orderId) {
+    const { data, error } = await db()
+      .from("order_status_history")
+      .select("*")
+      .eq("order_id", orderId)
+      .order("created_at", { ascending: true });
+
+    if (!error && data?.length) return data as OrderStatusHistory[];
+
+    // Migration not applied yet (or a legacy order): show the placement time.
+    const { data: order } = await db()
+      .from("orders")
+      .select("id, order_status, created_at")
+      .eq("id", orderId)
+      .maybeSingle();
+    if (!order) return [];
+    return [
+      {
+        id: `${order.id}_seed`,
+        order_id: order.id as string,
+        status: order.order_status as OrderStatusHistory["status"],
+        note: null,
+        created_at: order.created_at as string,
+      },
+    ];
   },
 
   /* stock */
@@ -507,8 +799,13 @@ export const supabaseStore: Store = {
     if (error) err(error);
   },
 
-  async listPayments() {
-    const { data, error } = await db().from("payments").select("*").order("created_at", { ascending: false });
+  async listPayments(opts) {
+    let q = db().from("payments").select("*").order("created_at", { ascending: false });
+    if (opts?.orderId) q = q.eq("order_id", opts.orderId);
+    // ilike without wildcards is a case-insensitive exact match; trx IDs are
+    // stored upper-case by the app but older rows may not be.
+    if (opts?.trxId) q = q.ilike("trx_id", opts.trxId.trim());
+    const { data, error } = await q;
     if (error) err(error);
     return (data ?? []) as Payment[];
   },
@@ -622,19 +919,44 @@ export const supabaseStore: Store = {
     return (data as BlogPost) ?? null;
   },
   async createPost(data) {
-    const payload = {
-      ...data,
-      slug: data.slug || data.title.toLowerCase().replace(/[^a-z0-9\u0980-\u09FF]+/g, "-").replace(/^-|-$/g, ""),
-      created_at: new Date().toISOString(),
-      published_at: data.is_published ? new Date().toISOString() : null,
-    };
-    const { data: row, error } = await db().from("blog_posts").insert(payload).select("*").single();
-    if (error) err(error);
-    return row as BlogPost;
+    const derived = data.title
+      .toLowerCase()
+      .replace(/[^a-z0-9\u0980-\u09FF]+/g, "-")
+      .replace(/^-|-$/g, "");
+    // A title with no Latin/Bengali letters at all would derive "" — the
+    // slugBase fallback keeps it unique instead of colliding on every insert.
+    const base = data.slug || derived || slugBase(data.title, "post");
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const slug = await nextUniqueSlug("blog_posts", base);
+      const payload = {
+        ...data,
+        slug,
+        created_at: new Date().toISOString(),
+        published_at: data.is_published ? new Date().toISOString() : null,
+      };
+      const { data: row, error } = await db().from("blog_posts").insert(payload).select("*").single();
+      if (!error) return row as BlogPost;
+      if (!isDuplicate(error)) err(error);
+    }
+    throw new Error("এই স্লাগে পোস্ট ইতিমধ্যে আছে — টাইটেল একটু আলাদা করে আবার চেষ্টা করুন।");
   },
   async updatePost(id, patch) {
-    const { error } = await db().from("blog_posts").update(patch).eq("id", id);
-    if (error) err(error);
+    let next: Partial<BlogPost> = patch;
+    if (patch.slug !== undefined) {
+      const slug = await nextUniqueSlug("blog_posts", patch.slug, id);
+      if (slug !== patch.slug) next = { ...patch, slug };
+    }
+
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { error } = await db().from("blog_posts").update(next).eq("id", id);
+      if (!error) break;
+      if (!isDuplicate(error)) err(error);
+      if (attempt === 2) throw new Error("সেভ করা যায়নি — স্লাগ ইতিমধ্যে ব্যবহৃত।");
+      if (next.slug !== undefined) {
+        next = { ...next, slug: await nextUniqueSlug("blog_posts", next.slug, id) };
+      }
+    }
     const { data } = await db().from("blog_posts").select("*").eq("id", id).maybeSingle();
     return data as BlogPost;
   },

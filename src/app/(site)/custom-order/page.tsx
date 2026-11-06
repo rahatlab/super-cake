@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { randomUUID } from "crypto";
-import { getStore } from "@/lib/store";
+import { getCachedSettings, listCachedCakes } from "@/lib/store/cache";
+import { ensureCustomBaseCake } from "@/lib/custom-cake";
 import { breadcrumbLd, ldJson } from "@/lib/seo";
 import { MIN_DELIVERY_LEAD_DAYS } from "@/lib/constants";
 import { dhakaDatePlus } from "@/lib/utils";
@@ -15,11 +15,15 @@ export const metadata: Metadata = {
   alternates: { canonical: "/custom-order" },
 };
 
+// Fresh idempotency key + request-time delivery window on every visit.
+export const dynamic = "force-dynamic";
+
 export default async function CustomOrderPage() {
-  const store = getStore();
-  const [settings, cakes] = await Promise.all([store.getSettings(), store.listCakes()]);
-  const customCake = cakes.find((c) => c.is_custom_available) ?? cakes[0] ?? null;
-  if (!customCake) notFound();
+  const [settings, cakes] = await Promise.all([getCachedSettings(), listCachedCakes()]);
+  // Zero cakes in the catalog must NOT 404 — a custom order is orderable even
+  // in an empty shop (ensureCustomBaseCake provisions the base row on demand).
+  const customCake =
+    cakes.find((c) => c.is_custom_available) ?? cakes[0] ?? (await ensureCustomBaseCake());
 
   return (
     <div className="container-page py-8">

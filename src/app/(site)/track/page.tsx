@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getStore } from "@/lib/store";
+import { getCachedSettings } from "@/lib/store/cache";
 import { breadcrumbLd, ldJson } from "@/lib/seo";
 import { TrackPanel } from "@/components/track/track-panel";
 
@@ -17,7 +17,7 @@ export default async function TrackPage({
   searchParams: Promise<{ no?: string; phone?: string }>;
 }) {
   const sp = await searchParams;
-  const settings = await getStore().getSettings();
+  const settings = await getCachedSettings();
 
   return (
     <div className="container-page py-10">

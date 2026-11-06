@@ -264,6 +264,75 @@ export function SettingsForm({ settings }: { settings: Settings }) {
             </p>
           </div>
         </section>
+
+        {/* ------------------ custom cake pricing ------------------ */}
+        <section className="card p-5 lg:col-span-2">
+          <SectionTitle
+            icon={Store}
+            title="Custom Cake প্রাইজিং"
+            hint="Custom cake অর্ডারের জন্য টিয়ার, সিরাপ ও ক্রাউন এর দাম"
+          />
+
+          <div className="mt-4 grid gap-6 sm:grid-cols-3">
+            {/* Extra Tier Fee */}
+            <div>
+              <label htmlFor="set-extra-tier-fee" className="label">
+                প্রতিটি অতিরিক্ত টিয়ার (৳)
+              </label>
+              <input
+                id="set-extra-tier-fee"
+                name="extra_tier_fee"
+                type="number"
+                min={0}
+                defaultValue={settings.extra_tier_fee ?? 300}
+                className="field"
+              />
+              <p className="mt-1 text-[11px] text-muted">
+                ওজনের বেস টিয়ার ফ্রি — প্রতি অতিরিক্ত টিয়ারে এই চার্জ
+              </p>
+            </div>
+
+            {/* Syrup Prices */}
+            <div>
+              <span className="label">সিরাপ ইনফিউশন দাম</span>
+              <div className="space-y-2 mt-2">
+                {["vanilla", "chocolate", "strawberry", "coffee", "honey", "rose"].map((syrup) => (
+                  <div key={syrup} className="flex items-center justify-between">
+                    <span className="text-sm capitalize">{syrup}</span>
+                    <input
+                      type="number"
+                      name={`syrup_${syrup}`}
+                      min={0}
+                      defaultValue={settings.syrup_prices?.[syrup] ?? 0}
+                      className="field w-24"
+                      placeholder="৳"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Crown Prices */}
+            <div>
+              <span className="label">ক্রাউন / টপিং দাম</span>
+              <div className="space-y-2 mt-2">
+                {["sprinkles", "pearls", "macarons", "flowers"].map((crown) => (
+                  <div key={crown} className="flex items-center justify-between">
+                    <span className="text-sm capitalize">{crown}</span>
+                    <input
+                      type="number"
+                      name={`crown_${crown}`}
+                      min={0}
+                      defaultValue={settings.crown_prices?.[crown] ?? 0}
+                      className="field w-24"
+                      placeholder="৳"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
       </div>
 
       <div className="sticky bottom-4 z-10">

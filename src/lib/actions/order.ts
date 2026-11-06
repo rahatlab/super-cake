@@ -7,10 +7,13 @@ import { getStore } from "@/lib/store";
 import { getCurrentUser, createOrderAccessToken, createCartLeadToken, verifyReviewAccessToken } from "@/lib/auth";
 import { rateLimit, clientIp } from "@/lib/rate-limit";
 import { checkoutSchema, reviewSchema, trackSchema } from "@/lib/validators";
+import { customExtras } from "@/lib/custom-design";
 import { buildBreakdown, evaluatePromo, evaluateReferral, referralDiscount } from "@/lib/pricing";
-import type { Order, Review } from "@/lib/types";
+import type { Order, OrderStatusHistory, Review } from "@/lib/types";
 import { notifyAdminNewOrder, notifyOrderConfirmation } from "@/lib/whatsapp";
 import { markCartConverted } from "@/lib/whatsapp/cart";
+import { isCloudinaryConfigured, MAX_REVIEW_PHOTOS, uploadReviewPhotos } from "@/lib/cloudinary";
+import { storeImages } from "@/lib/upload";
 import type { StockLine } from "@/lib/store/store-interface";
 
 export interface PlaceOrderState {
@@ -41,8 +44,8 @@ async function rollbackOrder(order: Order, stockLines: StockLine[]) {
     await store.releaseStock(stockLines);
     if (order.promo_code) await store.releasePromo(order.id);
     if (order.referral_code) await store.releaseReferral(order.id);
-    const payments = await store.listPayments();
-    const payment = payments.find((p) => p.order_id === order.id && p.status === "pending_verify");
+    const payments = await store.listPayments({ orderId: order.id });
+    const payment = payments.find((p) => p.status === "pending_verify");
     if (payment) await store.updatePayment(payment.id, { status: "unpaid" });
     await store.updateOrder(order.id, {
       order_status: "cancelled",
@@ -102,6 +105,12 @@ export async function placeOrderAction(
   const input = parsed.data;
   const store = getStore();
   const settings = await store.getSettings();
+
+  // Check if user is blocked by phone number
+  const userByPhone = await store.findUserByPhone(input.phone);
+  if (userByPhone && userByPhone.is_blocked) {
+    return { error: "আপনার অ্যাকাউন্ট ব্লক করা হয়েছে। অর্ডার করতে আমাদের সাথে যোগাযোগ করুন।", field: "phone" };
+  }
 
   if (input.payment_method === "cod" && !settings.cod_enabled) {
     return { error: "Cash on Delivery এখন বন্ধ আছে।", field: "payment_method" };
@@ -171,6 +180,18 @@ export async function placeOrderAction(
   }
 
   /* ---- server-side price recalculation ---- */
+  // /custom-order add-ons (extra tiers, crown, syrup). Recomputed here from
+  // the shared price table so the charge always matches the live quote the
+  // customer saw; single-item orders only, since a multi-item cart never
+  // carries a fee-bearing custom_spec.
+  if (pricedItems.length === 1) {
+    pricedItems[0] = {
+      ...pricedItems[0],
+      unit_price:
+        pricedItems[0].unit_price + customExtras(input.custom_spec, input.items[0]?.weight, settings),
+    };
+  }
+
   const promo = input.promo_code ? await store.getPromoByCode(input.promo_code) : null;
   const subtotal = pricedItems.reduce((s, i) => s + i.unit_price * i.quantity, 0);
   const promoCheck = evaluatePromo(promo, subtotal);
@@ -199,10 +220,7 @@ export async function placeOrderAction(
 
   /* ---- duplicate TrxID check (unique index is the final guard) ---- */
   if (input.payment_method === "bkash" && input.bkash_trx_id) {
-    const payments = await store.listPayments();
-    const duplicate = payments.some(
-      (p) => p.trx_id && p.trx_id.toUpperCase() === input.bkash_trx_id!.toUpperCase(),
-    );
+    const duplicate = (await store.listPayments({ trxId: input.bkash_trx_id })).length > 0;
     if (duplicate) {
       return { error: "এই bKash TrxID আগে ব্যবহার করা হয়েছে।", field: "bkash_trx_id" };
     }
@@ -270,13 +288,7 @@ export async function placeOrderAction(
   after(async () => {
     await Promise.allSettled([
       notifyAdminNewOrder(settings.whatsapp_phone, order.order_no, order.total, order.id),
-      notifyOrderConfirmation({
-        phone: order.phone,
-        customerName: order.customer_name,
-        orderNo: order.order_no,
-        total: order.total,
-        orderId: order.id,
-      }),
+      notifyOrderConfirmation({ order }),
       markCartConverted(order.phone, order.id),
     ]);
   });
@@ -339,6 +351,7 @@ export async function validateReferralAction(code: string, subtotal: number): Pr
 
 export interface TrackResult {
   order?: Order;
+  history?: OrderStatusHistory[];
   error?: string;
 }
 
@@ -365,7 +378,8 @@ export async function trackOrderAction(
   const b = parsed.data.phone.replace(/\D/g, "").slice(-10);
   if (a !== b) return { error: "অর্ডার আইডি ও ফোন নম্বর মিলছে না।" };
 
-  return { order };
+  const history = await store.listOrderStatusHistory(order.id);
+  return { order, history };
 }
 
 /* ---------------- reviews ---------------- */
@@ -415,6 +429,26 @@ export async function submitReviewAction(
   const cake = cakeSlug ? await store.getCakeBySlug(cakeSlug) : null;
   if (!cake) return { error: "অর্ডারের কেকটি খুঁজে পাওয়া যায়নি।" };
 
+  /* ---- optional customer photos ---- */
+  const photoFiles = formData
+    .getAll("photos")
+    .filter((v): v is File => typeof v !== "string" && v.size > 0);
+
+  if (photoFiles.length > MAX_REVIEW_PHOTOS) {
+    return { error: `সর্বোচ্চ ${MAX_REVIEW_PHOTOS} টি ছবি আপলোড করা যাবে।` };
+  }
+
+  let photos: string[] = [];
+  if (photoFiles.length) {
+    // Cloudinary when configured; otherwise fall back to the existing storage
+    // path so the feature still works in development.
+    const uploaded = isCloudinaryConfigured()
+      ? await uploadReviewPhotos(photoFiles)
+      : await storeImages(photoFiles);
+    if (uploaded.error) return { error: uploaded.error };
+    photos = uploaded.urls;
+  }
+
   try {
     await store.createReview({
       order_id: order.id,
@@ -422,6 +456,7 @@ export async function submitReviewAction(
       rating: parsed.data.rating,
       comment: parsed.data.comment,
       cake_slug: cake.slug,
+      photos,
     });
   } catch (e) {
     const message = (e as Error).message;

@@ -3,20 +3,50 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { BadgeCheck, Loader2, XCircle } from "lucide-react";
-import { verifyPaymentAction, type ActionState } from "@/lib/actions/admin";
+import { toast } from "react-toastify";
+import { verifyPaymentAction } from "@/lib/actions/admin";
 
 /** Approve / reject a bKash payment verification. */
 export function PaymentActions({ orderId }: { orderId: string }) {
   const router = useRouter();
-  const [msg, setMsg] = useState<ActionState>({});
+  const [busy, setBusy] = useState<"approve" | "reject" | null>(null);
   const [pending, startTransition] = useTransition();
 
   function verify(approve: boolean) {
-    setMsg({});
+    if (pending) return;
+    setBusy(approve ? "approve" : "reject");
     startTransition(async () => {
-      const res = await verifyPaymentAction(orderId, approve);
-      setMsg(res);
-      router.refresh();
+      const toastId = toast.loading(
+        approve ? "পেমেন্ট অনুমোদন করা হচ্ছে..." : "পেমেন্ট প্রত্যাখ্যান করা হচ্ছে..."
+      );
+      try {
+        const res = await verifyPaymentAction(orderId, approve);
+        if (res.error) {
+          toast.update(toastId, {
+            render: res.error,
+            type: "error",
+            isLoading: false,
+            autoClose: 3500,
+          });
+        } else if (res.success) {
+          toast.update(toastId, {
+            render: res.success,
+            type: "success",
+            isLoading: false,
+            autoClose: 3500,
+          });
+        }
+        router.refresh();
+      } catch (e) {
+        toast.update(toastId, {
+          render: (e as Error).message,
+          type: "error",
+          isLoading: false,
+          autoClose: 3500,
+        });
+      } finally {
+        setBusy(null);
+      }
     });
   }
 
@@ -30,7 +60,7 @@ export function PaymentActions({ orderId }: { orderId: string }) {
           className="btn btn-sm bg-success/15 text-success hover:bg-success/25"
           aria-label="পেমেন্ট অনুমোদন করুন"
         >
-          {pending ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <BadgeCheck className="h-4 w-4" aria-hidden />}
+          {busy === "approve" ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : <BadgeCheck className="h-4 w-4" aria-hidden />}
           Approve
         </button>
         <button
@@ -41,20 +71,10 @@ export function PaymentActions({ orderId }: { orderId: string }) {
           aria-label="পেমেন্ট প্রত্যাখ্যান করুন"
         >
           <XCircle className="h-4 w-4" aria-hidden />
+          {busy === "reject" && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
           Reject
         </button>
       </div>
-
-      {msg.success && (
-        <p role="status" className="mt-3 rounded-xl bg-success/10 px-3 py-2 text-sm font-semibold text-success">
-          ✅ {msg.success}
-        </p>
-      )}
-      {msg.error && (
-        <p role="alert" className="mt-3 rounded-xl bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">
-          ⚠️ {msg.error}
-        </p>
-      )}
     </div>
   );
 }

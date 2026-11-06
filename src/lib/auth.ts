@@ -161,7 +161,11 @@ export async function getSessionUserId(): Promise<string | null> {
 export async function getCurrentUser(): Promise<Profile | null> {
   const id = await getSessionUserId();
   if (!id) return null;
-  return getStore().getUserById(id);
+  const user = await getStore().getUserById(id);
+  // A blocked account behaves as logged out everywhere (session cookie is
+  // ignored), so it can neither browse the account area nor place orders.
+  if (!user || user.is_blocked) return null;
+  return user;
 }
 
 export async function setSessionCookie(userId: string): Promise<void> {

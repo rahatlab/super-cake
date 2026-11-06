@@ -82,6 +82,24 @@
   --animate-sprinkle: sprinkle 8s linear infinite;
   --animate-pop: pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
   --animate-shimmer: shimmer 2.2s linear infinite;
+  --animate-reveal-up: reveal-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise-up: rise-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-rise-in: rise-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  @keyframes reveal-up {
+    from { opacity: 0; transform: translateY(26px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  /* Transform-only: safe for above-the-fold/LCP content because the element is
+     painted (opacity 1) from the first frame. */
+  @keyframes rise-up {
+    from { transform: translateY(18px); }
+    to { transform: translateY(0); }
+  }
+  @keyframes rise-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 
   @keyframes float {
     0%, 100% { transform: translateY(0) rotate(0deg); }
@@ -157,6 +175,15 @@
     border: 1px solid hsl(var(--border));
     border-radius: 1.25rem;
     box-shadow: var(--shadow-soft);
+  }
+
+  /* Grid items default to `min-width: auto`, so one wide child (a
+     horizontal scroller, a canvas, a nowrap button) stretches the whole
+     track and drags the page into horizontal scroll on small screens.
+     Let every grid child shrink instead; Tailwind utilities such as
+     `min-w-full` still win because they live in a later layer. */
+  .grid > * {
+    min-width: 0;
   }
 
   .btn {
@@ -309,4 +336,21 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ---------------- react-toastify polish ---------------- */
+/* Keep toasts clear of the sticky header (h-16) at every breakpoint — the
+   library default sits 16px from the top and covers the topbar actions.
+   Higher specificity than the library's own rules, so it also wins in the
+   ≤480px media query (where the container snaps to top: 0). */
+.Toastify__toast-container.Toastify__toast-container--top-right {
+  top: 4.5rem;
+}
+/* Slim the countdown to a hairline instead of the default 5px block. */
+.Toastify__toast .Toastify__progress-bar--wrp {
+  height: 3px;
+}
+/* Match the site's font stack (Bengali text) instead of the library default. */
+.Toastify__toast {
+  font-family: inherit;
 }

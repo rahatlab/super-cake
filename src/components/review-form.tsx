@@ -1,13 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useActionState } from "react";
+import Image from "next/image";
+import { useRef, useState, useActionState, type ChangeEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Loader2, PartyPopper, Send, Star } from "lucide-react";
+import { ImagePlus, Loader2, PartyPopper, Send, Star, X } from "lucide-react";
 import { submitReviewAction, type ReviewState } from "@/lib/actions/order";
 import { StarInput } from "@/components/star-rating";
+import { MAX_REVIEW_PHOTOS } from "@/lib/constants";
 
 const initialState: ReviewState = {};
+const MAX_BYTES = 5 * 1024 * 1024;
+
+interface Picked {
+  file: File;
+  url: string;
+}
 
 export function ReviewForm({
   orderId,
@@ -22,6 +30,45 @@ export function ReviewForm({
 }) {
   const [rating, setRating] = useState(5);
   const [state, formAction, pending] = useActionState(submitReviewAction, initialState);
+  const [photos, setPhotos] = useState<Picked[]>([]);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  /** Keep the native <input type="file"> in sync with our removable list. */
+  const setFiles = (next: Picked[]) => {
+    const dt = new DataTransfer();
+    next.forEach((p) => dt.items.add(p.file));
+    if (inputRef.current) inputRef.current.files = dt.files;
+    setPhotos(next);
+  };
+
+  const pick = (e: ChangeEvent<HTMLInputElement>) => {
+    const chosen = Array.from(e.target.files ?? []);
+    if (!chosen.length) return;
+
+    setPhotoError(null);
+
+    const tooBig = chosen.find((f) => f.size > MAX_BYTES);
+    if (tooBig) {
+      setPhotoError(`${tooBig.name} — সর্বোচ্চ ৫MB`);
+      setFiles([]);
+      return;
+    }
+
+    if (chosen.length > MAX_REVIEW_PHOTOS) {
+      setPhotoError(`সর্বোচ্চ ${MAX_REVIEW_PHOTOS} টি ছবি দেওয়া যাবে`);
+    }
+
+    const trimmed = chosen.slice(0, MAX_REVIEW_PHOTOS);
+    photos.forEach((p) => URL.revokeObjectURL(p.url));
+    setFiles(trimmed.map((file) => ({ file, url: URL.createObjectURL(file) })));
+  };
+
+  const removePhoto = (index: number) => {
+    const target = photos[index];
+    if (target) URL.revokeObjectURL(target.url);
+    setFiles(photos.filter((_, i) => i !== index));
+  };
 
   if (state.success) {
     return (
@@ -97,6 +144,60 @@ export function ReviewForm({
           placeholder="কেক কেমন ছিল? ডেলিভারি? পরেরবার আবার নিবেন? কিছু লিখুন ✍️"
         />
         <p className="mt-1 text-right text-[11px] text-muted">কমপক্ষে ৩ অক্ষর</p>
+      </div>
+
+      {/* photos */}
+      <div>
+        <span className="label">কেকের ছবি (ঐচ্ছিক)</span>
+        <input
+          ref={inputRef}
+          type="file"
+          name="photos"
+          accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+          multiple
+          className="sr-only"
+          onChange={pick}
+        />
+
+        {photos.length > 0 && (
+          <div className="mb-3 grid grid-cols-4 gap-2">
+            {photos.map((p, i) => (
+              <div key={p.url} className="group relative aspect-square overflow-hidden rounded-xl border border-line">
+                <Image
+                  src={p.url}
+                  alt={`Review photo ${i + 1}`}
+                  fill
+                  unoptimized
+                  sizes="120px"
+                  className="object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => removePhoto(i)}
+                  aria-label={`ছবি ${i + 1} মুছুন`}
+                  className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-white transition-opacity hover:bg-black/80"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={photos.length >= MAX_REVIEW_PHOTOS}
+          className="btn btn-ghost btn-sm"
+        >
+          <ImagePlus className="h-4 w-4" />
+          {photos.length ? "আরও ছবি যোগ করুন" : "ছবি যোগ করুন"}
+        </button>
+        <p className="mt-1.5 text-[11px] text-muted">
+          সর্বোচ্চ {MAX_REVIEW_PHOTOS} টি ছবি · প্রতিটি ৫MB · JPG, PNG, WEBP, GIF বা AVIF
+        </p>
+
+        {photoError && <p className="mt-1 text-xs font-semibold text-danger">{photoError}</p>}
       </div>
 
       <AnimatePresence>

@@ -5,9 +5,11 @@ import { useMemo, useState } from "react";
 import { ClipboardList, Search } from "lucide-react";
 import { OCCASIONS, ORDER_STATUS_META } from "@/lib/constants";
 import { cn, formatBDT, formatDateTime } from "@/lib/utils";
+import { Pagination } from "@/components/pagination";
 import type { Occasion, Order, OrderStatus, PaymentStatus } from "@/lib/types";
 
 const STATUS_OPTIONS = Object.keys(ORDER_STATUS_META) as OrderStatus[];
+const PAGE_SIZE = 10;
 
 const PAYMENT_BADGE: Record<PaymentStatus, string> = {
   unpaid: "bg-line/60 text-muted",
@@ -24,6 +26,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
   const [status, setStatus] = useState<"all" | OrderStatus>("all");
   const [occasion, setOccasion] = useState<"all" | Occasion>("all");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -38,6 +41,10 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
       );
     });
   }, [orders, status, occasion, query]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const visible = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="space-y-4">
@@ -56,7 +63,10 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
               id="orders-search"
               type="search"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setPage(1);
+              }}
               placeholder="যেমন: SC-240101-1234"
               className="field pl-9"
             />
@@ -70,7 +80,10 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
           <select
             id="orders-status"
             value={status}
-            onChange={(e) => setStatus(e.target.value as "all" | OrderStatus)}
+            onChange={(e) => {
+              setStatus(e.target.value as "all" | OrderStatus);
+              setPage(1);
+            }}
             className="field"
           >
             <option value="all">সব স্ট্যাটাস</option>
@@ -89,7 +102,10 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
           <select
             id="orders-occasion"
             value={occasion}
-            onChange={(e) => setOccasion(e.target.value as "all" | Occasion)}
+            onChange={(e) => {
+              setOccasion(e.target.value as "all" | Occasion);
+              setPage(1);
+            }}
             className="field"
           >
             <option value="all">সব occasion</option>
@@ -147,7 +163,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {filtered.map((o) => {
+              {visible.map((o) => {
                 const meta = ORDER_STATUS_META[o.order_status];
                 const occ = occasionMeta(o.occasion);
                 return (
@@ -174,12 +190,20 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                     <td className="px-4 py-3 font-bold">{formatBDT(o.total)}</td>
                     <td className="px-4 py-3">
                       <span className="badge uppercase bg-line/50 text-muted">{o.payment_method}</span>{" "}
-                      <span className={cn("badge", PAYMENT_BADGE[o.payment_status])}>
-                        {o.payment_status.replace("_", " ")}
+                      <span className={cn("badge", PAYMENT_BADGE[o.order_status === "completed" && o.payment_method === "cod" ? "paid" : o.payment_status])}>
+                        {o.order_status === "completed" && o.payment_method === "cod" ? "paid" : o.payment_status.replace("_", " ")}
                       </span>
                     </td>
                     <td className="px-4 py-3">
                       <span className={cn("badge", meta.color)}>{meta.bn}</span>
+                      {(o.is_flagged ?? false) && (
+                        <span
+                          className="ml-1.5 badge bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                          title="ফেক / সন্দেহজনক অর্ডার"
+                        >
+                          🚩 ফেক
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted">{formatDateTime(o.created_at)}</td>
                     <td className="px-4 py-3 text-right">
@@ -193,6 +217,15 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
             </tbody>
           </table>
         </div>
+      )}
+
+      {filtered.length > 0 && (
+        <Pagination
+          page={safePage}
+          totalPages={totalPages}
+          total={filtered.length}
+          onPageChange={setPage}
+        />
       )}
 
       {filtered.length === 0 && orders.length === 0 && (

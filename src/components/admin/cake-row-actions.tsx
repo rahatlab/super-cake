@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Power, Trash2 } from "lucide-react";
+import { toast } from "react-toastify";
+import { confirmDialog } from "@/lib/confirm";
 import { deleteCakeAction, toggleCakeActiveAction } from "@/lib/actions/admin";
 
 /** Inline availability toggle + delete (with confirm) for the cake list. */
@@ -16,69 +18,89 @@ export function CakeRowActions({
   isActive: boolean;
 }) {
   const router = useRouter();
-  const [msg, setMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [active, setActive] = useState(isActive);
 
   function toggle() {
-    const next = !active;
+    if (pending) return;
+    const next = !isActive;
     startTransition(async () => {
+      const toastId = toast.loading(next ? "চালু করা হচ্ছে..." : "বন্ধ করা হচ্ছে...");
       const res = await toggleCakeActiveAction(cakeId, next);
       if (res.error) {
-        setMsg(`⚠️ ${res.error}`);
+        toast.update(toastId, {
+          render: res.error,
+          type: "error",
+          isLoading: false,
+          autoClose: 3500,
+        });
         return;
       }
-      setActive(next);
-      setMsg(res.success ?? null);
+      toast.update(toastId, {
+        render: res.success ?? (next ? "চালু হয়েছে" : "বন্ধ হয়েছে"),
+        type: "success",
+        isLoading: false,
+        autoClose: 3500,
+      });
       router.refresh();
     });
   }
 
-  function remove() {
-    if (!window.confirm(`"${cakeName}" মুছে ফেলতে চান? এটা ফেরানো যাবে না।`)) return;
+  async function remove() {
+    if (pending) return;
+    const ok = await confirmDialog({
+      title: `"${cakeName}" মুছে ফেলবেন?`,
+      text: "মুছে ফেলার পর এটি আর ফিরে আসবে না।",
+      confirmText: "মুছে ফেলুন",
+    });
+    if (!ok) return;
     startTransition(async () => {
+      const toastId = toast.loading("মুছে ফেলা হচ্ছে...");
       const res = await deleteCakeAction(cakeId);
       if (res.error) {
-        setMsg(`⚠️ ${res.error}`);
+        toast.update(toastId, {
+          render: res.error,
+          type: "error",
+          isLoading: false,
+          autoClose: 3500,
+        });
         return;
       }
+      toast.update(toastId, {
+        render: res.success ?? `"${cakeName}" মুছে ফেলা হয়েছে`,
+        type: "success",
+        isLoading: false,
+        autoClose: 3500,
+      });
       router.refresh();
     });
   }
 
   return (
-    <div className="flex flex-col items-end gap-1.5">
-      <div className="flex flex-wrap justify-end gap-2">
-        <button
-          type="button"
-          onClick={toggle}
-          disabled={pending}
-          className={`btn btn-sm ${
-            active ? "btn-ghost text-muted" : "bg-success/15 text-success hover:bg-success/25"
-          }`}
-          aria-label={active ? `${cakeName} বন্ধ করুন` : `${cakeName} চালু করুন`}
-        >
-          {pending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-          ) : (
-            <Power className="h-3.5 w-3.5" aria-hidden />
-          )}
-          {active ? "চালু" : "বন্ধ"}
-        </button>
-
-        <button
-          type="button"
-          onClick={remove}
-          disabled={pending}
-          className="btn btn-sm btn-ghost text-danger hover:bg-danger/10"
-          aria-label={`${cakeName} মুছে ফেলুন`}
-        >
-          <Trash2 className="h-3.5 w-3.5" aria-hidden />
-          Delete
-        </button>
-      </div>
-
-      {msg && <span className="text-[11px] font-semibold text-muted">{msg}</span>}
+    <div className="flex items-center justify-end gap-1">
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={pending}
+        className={`btn btn-ghost btn-sm ${isActive ? "text-success" : "text-danger"}`}
+        aria-label={isActive ? "বন্ধ করুন" : "চালু করুন"}
+        title={isActive ? "বন্ধ করুন" : "চালু করুন"}
+      >
+        {pending ? (
+          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        ) : (
+          <Power className="h-4 w-4" aria-hidden />
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={remove}
+        disabled={pending}
+        className="btn btn-ghost btn-sm text-danger"
+        aria-label="মুছুন"
+        title="মুছুন"
+      >
+        <Trash2 className="h-4 w-4" aria-hidden />
+      </button>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import path from "path";
 import { createClient } from "@supabase/supabase-js";
 import { uid } from "./utils";
 
-const MAX_BYTES = 5 * 1024 * 1024; // 5MB per file
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB per file
 
 type ImageKind = "jpg" | "png" | "webp" | "gif" | "avif";
 
@@ -20,7 +20,7 @@ const MIME: Record<ImageKind, string> = {
  * Content-Type or file extension: SVG is deliberately rejected because it can
  * carry scripts and is served from a public origin.
  */
-function detectImage(buf: Buffer): ImageKind | null {
+export function detectImage(buf: Buffer): ImageKind | null {
   if (buf.length < 12) return null;
 
   // JPEG: FF D8 FF
@@ -91,7 +91,7 @@ export async function storeImages(files: File[]): Promise<UploadResult> {
   const prepared: { buf: Buffer; kind: ImageKind }[] = [];
 
   for (const f of valid) {
-    if (f.size > MAX_BYTES) {
+    if (f.size > MAX_IMAGE_BYTES) {
       return { urls: [], mode: "local", error: `${f.name} — সর্বোচ্চ ৫MB` };
     }
     const buf = Buffer.from(await f.arrayBuffer());

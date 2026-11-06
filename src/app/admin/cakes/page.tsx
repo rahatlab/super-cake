@@ -3,13 +3,25 @@ import Link from "next/link";
 import Image from "next/image";
 import { Pencil, Plus, Star } from "lucide-react";
 import { getStore } from "@/lib/store";
-import { formatBDT, weightLabel } from "@/lib/utils";
+import { formatBDT, parsePageParam, weightLabel } from "@/lib/utils";
 import { CakeRowActions } from "@/components/admin/cake-row-actions";
+import { Pagination } from "@/components/pagination";
 
 export const metadata: Metadata = { title: "Cakes" };
 
-export default async function AdminCakesPage() {
+const PAGE_SIZE = 10;
+
+export default async function AdminCakesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const cakes = await getStore().listCakes({ includeInactive: true });
+
+  const page = parsePageParam((await searchParams).page);
+  const totalPages = Math.max(1, Math.ceil(cakes.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const visible = cakes.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="space-y-5">
@@ -61,7 +73,7 @@ export default async function AdminCakesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {cakes.map((cake) => {
+              {visible.map((cake) => {
                 const sizes = cake.sizes ?? [];
                 return (
                   <tr key={cake.id} className="align-top transition-colors hover:bg-fg/[0.03]">
@@ -160,6 +172,10 @@ export default async function AdminCakesPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {cakes.length > 0 && (
+        <Pagination page={safePage} totalPages={totalPages} total={cakes.length} />
       )}
     </div>
   );

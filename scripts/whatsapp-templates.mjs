@@ -76,6 +76,22 @@ const TEMPLATES = [
     example: ["Chocolate Truffle Cake — 1 lb", "http://localhost:3000/order"],
     footer: "Super Cake",
   },
+  {
+    // Params: {{1}} name · {{2}} promo code · {{3}} percent · {{4}} expiry —
+    // same order as notifyWish() in src/lib/whatsapp.ts.
+    name: "birthday_wish",
+    category: "MARKETING",
+    body: "Super Cake: জন্মদিনের শুভেচ্ছা {{1}}! 🎂\n\nআপনার বিশেষ দিনে একটি বিশেষ উপহার — প্রোমো কোড {{2}} দিয়ে {{3}} ছাড় (সর্বোচ্চ ৳800), মেয়াদ {{4}} পর্যন্ত।\n\nআগেভাগে জানিয়ে দিলে কেকটি ঠিকমতো সাজিয়ে দিতে পারব।\n\nনা চাইলে রোক্ন করতে STOP লিখুন।",
+    example: ["Rafiq Hasan", "BDAY1103K7QX", "10%", "10 Nov 2026"],
+    footer: "Super Cake",
+  },
+  {
+    name: "anniversary_wish",
+    category: "MARKETING",
+    body: "Super Cake: বার্ষিকীর শুভেচ্ছা {{1}}! 💍\n\nএই উপলক্ষে আপনার জন্য বিশেষ উপহার — প্রোমো কোড {{2}} দিয়ে {{3}} ছাড় (সর্বোচ্চ ৳800), মেয়াদ {{4}} পর্যন্ত।\n\nমিষ্টি মুহূর্তটি কেক দিয়ে আরও মিষ্টি করুন।\n\nনা চাইলে রোক্ন করতে STOP লিখুন।",
+    example: ["Rafiq Hasan", "ANNIV1103Z2P9", "10%", "10 Nov 2026"],
+    footer: "Super Cake",
+  },
 ];
 
 async function graph(pathname, init = {}) {

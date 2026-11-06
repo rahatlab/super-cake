@@ -20,6 +20,19 @@ export interface Profile {
   phone: string;
   email?: string;
   role: Role;
+  /**
+   * Customer milestones used by the daily auto-wish cron. Both are optional
+   * date-only strings (`YYYY-MM-DD`); the year is ignored when matching so a
+   * birthdate of 1990-11-03 still fires every 3 November.
+   */
+  birthdate?: string | null;
+  anniversary_date?: string | null;
+  /** ISO date of the last birthday greeting sent (one wish per year). */
+  last_birthday_wish?: string | null;
+  /** ISO date of the last anniversary greeting sent (one wish per year). */
+  last_anniversary_wish?: string | null;
+  /** Admin can block users to prevent them from placing orders. */
+  is_blocked?: boolean;
   created_at: string;
 }
 
@@ -77,6 +90,15 @@ export interface Order {
     servings?: number;
     reference_image?: string;
     budget?: number;
+    /** 3D design picker choices from /custom-order */
+    cake_shape?: "round" | "square" | "heart" | "number";
+    frosting_color?: string;
+    message_font?: string;
+    message_color?: string;
+    decoration?: "none" | "pearls" | "macarons" | "flowers" | "sprinkles";
+    /** configurator tier count (1–4) from /custom-order */
+    tiers?: number;
+    syrup?: "none" | "vanilla" | "chocolate" | "strawberry" | "coffee" | "honey" | "rose";
   } | null;
   address: string;
   delivery_date: string;
@@ -95,6 +117,8 @@ export interface Order {
   note?: string;
   review_requested_at?: string | null;
   idempotency_key?: string | null;
+  /** 🚩 admin marks suspected fake/prank orders. */
+  is_flagged?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -150,6 +174,21 @@ export interface PhoneVerification {
   created_at: string;
 }
 
+export type EmailVerificationPurpose = "register" | "reset" | "verify";
+
+export interface EmailVerification {
+  id: string;
+  email: string;
+  email_key: string;
+  purpose: EmailVerificationPurpose;
+  code_hash: string;
+  expires_at: string;
+  attempts: number;
+  verified_at?: string | null;
+  consumed_at?: string | null;
+  created_at: string;
+}
+
 export interface Review {
   id: string;
   order_id: string;
@@ -157,7 +196,18 @@ export interface Review {
   rating: number;
   comment: string;
   cake_slug?: string | null;
+  /** Customer-uploaded photos (Cloudinary URLs). */
+  photos?: string[];
   is_approved: boolean;
+  created_at: string;
+}
+
+/** One row per status transition, written when an order's status changes. */
+export interface OrderStatusHistory {
+  id: string;
+  order_id: string;
+  status: OrderStatus;
+  note?: string | null;
   created_at: string;
 }
 
@@ -211,6 +261,12 @@ export interface Settings {
   bkash_enabled: boolean;
   instagram?: string;
   facebook?: string;
+  /** Extra charge for each custom tier above the included base tier. */
+  extra_tier_fee: number;
+  /** Custom cake syrup infusion prices, keyed by SyrupId. */
+  syrup_prices: Record<string, number>;
+  /** Custom cake crown/topping prices, keyed by CrownId. */
+  crown_prices: Record<string, number>;
 }
 
 /* ---------- derived / report shapes ---------- */
@@ -223,8 +279,25 @@ export interface DashboardStats {
   total_products: number;
   total_reviews: number;
   avg_rating: number;
+  /** Registered accounts (profiles). */
+  total_users: number;
+  /** Accounts created in the last 7 days. */
+  new_users_7d: number;
   orders_by_occasion: { name: string; value: number }[];
   orders_by_payment: { name: string; value: number }[];
   promo_usage: { name: string; value: number }[];
   revenue_by_day: { day: string; revenue: number }[];
+}
+
+/**
+ * Per-customer order counters for the admin users screen — used to spot
+ * cancel-heavy or 🚩 flagged accounts before blocking them.
+ */
+export interface UserOrderStats {
+  total: number;
+  cancelled: number;
+  delivered: number;
+  flagged: number;
+  /** Sum of totals, excluding cancelled orders. */
+  spent: number;
 }

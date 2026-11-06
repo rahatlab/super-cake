@@ -7,6 +7,7 @@ import {
   ClipboardList,
   Clock3,
   Star,
+  UserPlus,
 } from "lucide-react";
 import { getStore } from "@/lib/store";
 import { ORDER_STATUS_META } from "@/lib/constants";
@@ -25,8 +26,13 @@ const OCCASION_LABEL: Record<string, string> = {
 
 export default async function AdminOverviewPage() {
   const store = getStore();
-  const [stats, orders] = await Promise.all([store.getDashboardStats(), store.listOrders()]);
-  const recent = orders.slice(0, 6);
+  const [stats, orders, recentUsers] = await Promise.all([
+    store.getDashboardStats(),
+    // The overview only previews a handful of rows — don't ship the whole table.
+    store.listOrders({ limit: 6 }),
+    store.listUsers({ limit: 6 }),
+  ]);
+  const recent = orders;
 
   const cards = [
     {
@@ -57,6 +63,13 @@ export default async function AdminOverviewPage() {
       icon: Star,
       tone: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
     },
+    {
+      label: "মোট অ্যাকাউন্ট",
+      value: String(stats.total_users),
+      sub: `${stats.new_users_7d} নতুন — গত ৭ দিনে`,
+      icon: UserPlus,
+      tone: "bg-sky-500/15 text-sky-600 dark:text-sky-400",
+    },
   ];
 
   const occasionData = stats.orders_by_occasion.map((d) => ({
@@ -79,7 +92,7 @@ export default async function AdminOverviewPage() {
       </div>
 
       {/* stat cards */}
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {cards.map((c) => (
           <section key={c.label} className="card p-5">
             <div className="flex items-start justify-between gap-3">
@@ -103,7 +116,7 @@ export default async function AdminOverviewPage() {
         <PieStat title="Promo কোড ব্যবহার" data={stats.promo_usage} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
         <BarStat title="শেষ ৭ দিনের রিভিউনিউ" data={stats.revenue_by_day} />
 
         {/* recent orders */}
@@ -147,6 +160,47 @@ export default async function AdminOverviewPage() {
                   </li>
                 );
               })}
+            </ul>
+          )}
+        </section>
+
+        {/* recently created accounts */}
+        <section className="card overflow-hidden">
+          <header className="flex items-center justify-between gap-3 border-b border-line px-5 py-4">
+            <h2 className="text-sm font-bold uppercase tracking-wide text-muted">সাম্প্রতিক অ্যাকাউন্ট</h2>
+            <Link href="/admin/users" className="text-xs font-bold text-brand-strong hover:underline">
+              সব দেখুন
+            </Link>
+          </header>
+
+          {recentUsers.length === 0 ? (
+            <div className="grid place-items-center gap-2 py-14 text-center">
+              <span className="text-3xl" aria-hidden>
+                👤
+              </span>
+              <p className="text-sm font-semibold text-muted">এখনো কোনো অ্যাকাউন্ট নেই</p>
+            </div>
+          ) : (
+            <ul className="divide-y divide-line">
+              {recentUsers.map((u) => (
+                <li key={u.id}>
+                  <Link
+                    href="/admin/users"
+                    className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-fg/[0.03]"
+                  >
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-sky-500/15 text-sky-600 dark:text-sky-400">
+                      <UserPlus className="h-4 w-4" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold">{u.name}</p>
+                      <p className="truncate text-xs text-muted">
+                        {u.email || u.phone} · {formatDateTime(u.created_at)}
+                      </p>
+                    </div>
+                    {u.is_blocked && <span className="badge bg-red-500/15 text-red-600 dark:text-red-400">ব্লক</span>}
+                  </Link>
+                </li>
+              ))}
             </ul>
           )}
         </section>

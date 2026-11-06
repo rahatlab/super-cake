@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useActionState } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import { ImagePlus, Loader2, Save, X } from "lucide-react";
 import { savePostAction, uploadImagesAction, type ActionState } from "@/lib/actions/admin";
 import type { BlogPost } from "@/lib/types";

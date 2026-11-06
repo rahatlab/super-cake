@@ -1,29 +1,67 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2, Trash2 } from "lucide-react";
+import { toast } from "react-toastify";
+import { confirmDialog } from "@/lib/confirm";
 import { moderateReviewAction } from "@/lib/actions/admin";
 
 /** Approve (publish) or delete a customer review. */
 export function ReviewActions({ reviewId, isApproved }: { reviewId: string; isApproved: boolean }) {
   const router = useRouter();
-  const [msg, setMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   function approve() {
+    if (pending) return;
     startTransition(async () => {
+      const toastId = toast.loading("রিভিউ প্রকাশ করা হচ্ছে...");
       const res = await moderateReviewAction(reviewId, true);
-      setMsg(res.error ? `⚠️ ${res.error}` : (res.success ?? null));
+      if (res.error) {
+        toast.update(toastId, {
+          render: res.error,
+          type: "error",
+          isLoading: false,
+          autoClose: 3500,
+        });
+      } else {
+        toast.update(toastId, {
+          render: res.success ?? "রিভিউ প্রকাশিত হয়েছে",
+          type: "success",
+          isLoading: false,
+          autoClose: 3500,
+        });
+      }
       router.refresh();
     });
   }
 
-  function remove() {
-    if (!window.confirm("এই রিভিউটি মুছে ফেলতে চান?")) return;
+  async function remove() {
+    if (pending) return;
+    const ok = await confirmDialog({
+      title: "এই রিভিউটি মুছে ফেলবেন?",
+      text: "প্রকাশিত রিভিউ সাইট থেকে স্থায়ীভাবে সরে যাবে।",
+      confirmText: "মুছে ফেলুন",
+    });
+    if (!ok) return;
     startTransition(async () => {
+      const toastId = toast.loading("রিভিউ মুছে ফেলা হচ্ছে...");
       const res = await moderateReviewAction(reviewId, false);
-      setMsg(res.error ? `⚠️ ${res.error}` : (res.success ?? null));
+      if (res.error) {
+        toast.update(toastId, {
+          render: res.error,
+          type: "error",
+          isLoading: false,
+          autoClose: 3500,
+        });
+      } else {
+        toast.update(toastId, {
+          render: res.success ?? "রিভিউ মুছে ফেলা হয়েছে",
+          type: "success",
+          isLoading: false,
+          autoClose: 3500,
+        });
+      }
       router.refresh();
     });
   }
@@ -62,7 +100,6 @@ export function ReviewActions({ reviewId, isApproved }: { reviewId: string; isAp
           Delete
         </button>
       </div>
-      {msg && <span className="text-[11px] font-semibold text-muted">{msg}</span>}
     </div>
   );
 }

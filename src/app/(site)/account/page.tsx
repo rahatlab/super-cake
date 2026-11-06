@@ -5,7 +5,9 @@ import { LogOut, MapPin, Package, Star } from "lucide-react";
 import { getCurrentUser, createReviewAccessToken } from "@/lib/auth";
 import { logoutAction } from "@/lib/actions/auth";
 import { PasswordForm } from "@/components/auth/password-form";
+import { MilestoneForm } from "@/components/auth/milestone-form";
 import { getStore } from "@/lib/store";
+import { getCachedSettings } from "@/lib/store/cache";
 import { ORDER_STATUS_META } from "@/lib/constants";
 import { formatBDT, formatDateTime } from "@/lib/utils";
 
@@ -24,7 +26,7 @@ export default async function AccountPage() {
 
   const [orders, settings] = await Promise.all([
     store.listOrdersByUser(user.id),
-    store.getSettings(),
+    getCachedSettings(),
   ]);
 
   const mine = orders.slice(0, 20);
@@ -77,6 +79,14 @@ export default async function AccountPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* auto-wish milestones (birthday / anniversary) */}
+      <div className="mb-7">
+        <MilestoneForm
+          birthdate={user.birthdate}
+          anniversaryDate={user.anniversary_date}
+        />
       </div>
 
       {/* password */}

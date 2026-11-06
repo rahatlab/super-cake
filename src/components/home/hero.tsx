@@ -1,8 +1,5 @@
-"use client";
-
 import Link from "next/link";
 import Image from "next/image";
-import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, MessageCircle, Sparkles } from "lucide-react";
 
 const HEADLINE = ["প্রতিটি", "উদ্‌যাপনে", "মিষ্টি", "হোক"];
@@ -16,6 +13,15 @@ const SPRINKLES = Array.from({ length: 18 }, (_, i) => ({
   color: ["#ff8fab", "#ffd166", "#8ee3ef", "#c9a7ff", "#a7f3d0"][i % 5],
 }));
 
+/**
+ * Above-the-fold hero — CSS only.
+ *
+ * It used to be a client component driven by framer-motion (18 animated
+ * sprinkles + spring transitions). That made the LCP element wait for hydration
+ * and shipped ~140 kB of animation runtime for decoration. The same look is now
+ * plain CSS keyframes (`animate-sprinkle` / `animate-float` /
+ * `animate-rise-up`) and the component renders on the server.
+ */
 export function Hero({
   whatsapp,
   rating = 0,
@@ -25,25 +31,25 @@ export function Hero({
   rating?: number;
   reviewCount?: number;
 }) {
-  const reduce = useReducedMotion();
-
   return (
     <section className="relative overflow-hidden">
       {/* animated sprinkles */}
-      {!reduce && (
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          {SPRINKLES.map((s) => (
-            <motion.span
-              key={s.id}
-              className="absolute top-0 rounded-full"
-              style={{ left: `${s.left}%`, width: s.size, height: s.size, background: s.color }}
-              initial={{ y: -40, opacity: 0, rotate: 0 }}
-              animate={{ y: "105vh", opacity: [0, 1, 1, 0], rotate: 360 }}
-              transition={{ duration: s.duration, delay: s.delay, repeat: Infinity, ease: "linear" }}
-            />
-          ))}
-        </div>
-      )}
+      <div aria-hidden className="pointer-events-none absolute inset-0 hidden sm:block">
+        {SPRINKLES.map((s) => (
+          <span
+            key={s.id}
+            className="animate-sprinkle absolute top-0 rounded-full opacity-0"
+            style={{
+              left: `${s.left}%`,
+              width: s.size,
+              height: s.size,
+              background: s.color,
+              animationDelay: `${s.delay}s`,
+              animationDuration: `${s.duration}s`,
+            }}
+          />
+        ))}
+      </div>
 
       {/* glow */}
       <div
@@ -60,44 +66,33 @@ export function Hero({
       <div className="container-page relative grid items-center gap-10 py-14 md:py-20 lg:grid-cols-[1.05fr_0.95fr]">
         {/* copy */}
         <div>
-          <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="mb-5 inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3.5 py-1.5 text-[13px] font-semibold text-brand-strong"
-          >
+          <div className="mb-5 inline-flex animate-rise-up items-center gap-2 rounded-full border border-brand/30 bg-brand/10 px-3.5 py-1.5 text-[13px] font-semibold text-brand-strong">
             <Sparkles className="h-3.5 w-3.5" /> হাতে বানানো · তাজা · অর্ডার করার সহজ উপায়
-          </motion.div>
+          </div>
 
           <h1 className="font-display text-4xl font-extrabold leading-[1.12] sm:text-5xl lg:text-6xl">
             {HEADLINE.map((word, i) => (
-              <motion.span
+              <span
                 key={word}
-                className="mr-3 inline-block"
-                initial={{ opacity: 0, y: 26, rotate: -4 }}
-                animate={{ opacity: 1, y: 0, rotate: 0 }}
-                transition={{ delay: 0.12 * i, type: "spring", stiffness: 130, damping: 15 }}
+                className="mr-3 inline-block animate-rise-up"
+                style={{ animationDelay: `${0.12 * i}s` }}
               >
                 {i === HEADLINE.length - 1 ? <span className="text-gradient">{word}</span> : word}
-              </motion.span>
+              </span>
             ))}
           </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.55 }}
-            className="mt-5 max-w-xl text-[15px] leading-relaxed text-muted sm:text-base"
+          <p
+            className="mt-5 max-w-xl animate-rise-up text-[15px] leading-relaxed text-muted sm:text-base"
+            style={{ animationDelay: "0.55s" }}
           >
             Birthday, Anniversary, Occasion কিংবা Gift — ৩ ধাপে অর্ডার করুন। Cash on Delivery অথবা
             bKash, সাথে আপনার পছন্দের flavour আর message on cake।
-          </motion.p>
+          </p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.68 }}
-            className="mt-7 flex flex-wrap items-center gap-3"
+          <div
+            className="mt-7 flex animate-rise-up flex-wrap items-center gap-3"
+            style={{ animationDelay: "0.68s" }}
           >
             <Link href="/cakes" className="btn btn-primary btn-lg group">
               এখনই অর্ডার করুন
@@ -114,14 +109,12 @@ export function Hero({
             >
               <MessageCircle className="h-4 w-4" /> WhatsApp
             </a>
-          </motion.div>
+          </div>
 
           {/* stats */}
-          <motion.dl
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.9 }}
-            className="mt-9 grid max-w-lg grid-cols-3 gap-4 border-t border-line pt-6"
+          <dl
+            className="mt-9 grid max-w-lg animate-rise-up grid-cols-3 gap-4 border-t border-line pt-6"
+            style={{ animationDelay: "0.9s" }}
           >
             {[
               { k: "৩ ধাপ", v: "সহজ অর্ডার" },
@@ -133,21 +126,15 @@ export function Hero({
                 <dd className="mt-0.5 text-[11px] text-muted sm:text-xs">{s.v}</dd>
               </div>
             ))}
-          </motion.dl>
+          </dl>
         </div>
 
         {/* visual */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.86, rotate: -6 }}
-          animate={{ opacity: 1, scale: 1, rotate: 0 }}
-          transition={{ type: "spring", stiffness: 90, damping: 16, delay: 0.2 }}
-          className="relative mx-auto w-full max-w-md"
+        <div
+          className="relative mx-auto w-full max-w-md animate-rise-up"
+          style={{ animationDelay: "0.2s" }}
         >
-          <motion.div
-            animate={reduce ? {} : { y: [0, -16, 0], rotate: [0, 2, 0] }}
-            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            className="relative aspect-square"
-          >
+          <div className="relative aspect-square">
             <div className="absolute inset-0 rounded-[2.5rem] bg-gradient-to-br from-brand/35 via-accent/25 to-brand/10 blur-2xl" />
             <div className="card absolute inset-0 overflow-hidden !rounded-[2.5rem]">
               <Image
@@ -161,41 +148,38 @@ export function Hero({
             </div>
 
             {/* floating badges */}
-            <motion.div
-              animate={reduce ? {} : { y: [0, -10, 0] }}
-              transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 0.4 }}
-              className="card absolute -left-4 top-6 flex items-center gap-2 px-3 py-2 sm:-left-8"
+            <div
+              className="card absolute -left-4 top-6 flex animate-float items-center gap-2 px-3 py-2 sm:-left-8"
+              style={{ animationDelay: "0.4s" }}
             >
               <span className="text-lg">🎂</span>
               <div className="leading-tight">
                 <p className="text-[11px] font-bold">Custom Design</p>
                 <p className="text-[10px] text-muted">আপনার আইডিয়া</p>
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              animate={reduce ? {} : { y: [0, 12, 0] }}
-              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-              className="card absolute -right-3 bottom-10 flex items-center gap-2 px-3 py-2 sm:-right-6"
+            <div
+              className="card absolute -right-3 bottom-10 flex animate-float items-center gap-2 px-3 py-2 sm:-right-6"
+              style={{ animationDelay: "1s", animationDuration: "5s" }}
             >
               <span className="text-lg">🚚</span>
               <div className="leading-tight">
                 <p className="text-[11px] font-bold">Scheduled</p>
                 <p className="text-[10px] text-muted">আপনার তারিখে ডেলিভারি</p>
               </div>
-            </motion.div>
+            </div>
 
-            <motion.div
-              animate={reduce ? {} : { scale: [1, 1.06, 1] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-surface px-4 py-2 text-xs font-bold shadow-lift"
+            <div
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 animate-float rounded-full bg-surface px-4 py-2 text-xs font-bold shadow-lift"
+              style={{ animationDuration: "7s" }}
             >
               {reviewCount > 0
                 ? `⭐ ${rating.toFixed(1)}/৫ · ${reviewCount} টি রিভিউ`
                 : "🎂 Freshly Baked · Made to Order"}
-            </motion.div>
-          </motion.div>
-        </motion.div>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );

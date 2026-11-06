@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { MapPin, ShieldCheck, Truck } from "lucide-react";
-import { getStore } from "@/lib/store";
+import { getCachedSettings, listCachedCakes } from "@/lib/store/cache";
+import { getCakeBySlug, getApprovedReviews } from "@/lib/store/queries";
 import { OCCASIONS, SITE } from "@/lib/constants";
 import { ldJson, productLd, breadcrumbLd } from "@/lib/seo";
 import { CakeGallery } from "@/components/cake-gallery";
@@ -11,13 +13,27 @@ import { CakeCard } from "@/components/cake-card";
 import { Stars } from "@/components/star-rating";
 import { formatBDT, formatDateTime, waLink } from "@/lib/utils";
 
+// Cakes are static content; admin edits call revalidatePath("/", "layout").
+// The time-based fallback just bounds staleness if a revalidation is missed.
+export const revalidate = 300;
+
+/**
+ * Prerender every cake at build time so the (previously slowest) detail route
+ * is served from the cache instead of running ~6 Supabase queries per visit.
+ * New cakes still work instantly via on-demand generation (`dynamicParams`).
+ */
+export async function generateStaticParams() {
+  const cakes = await listCachedCakes(true);
+  return cakes.map((c) => ({ slug: c.slug }));
+}
+
 interface Ctx {
   params: Promise<{ slug: string }>;
 }
 
 export async function generateMetadata({ params }: Ctx): Promise<Metadata> {
   const { slug } = await params;
-  const cake = await getStore().getCakeBySlug(slug);
+  const cake = await getCakeBySlug(slug);
   if (!cake) return { title: "কেক পাওয়া যায়নি" };
 
   const desc = `${cake.name} — ${cake.description} ${formatBDT(cake.base_price)} থেকে শুরু, ½–৩ পাউন্ড। ${SITE.name} থেকে অর্ডার করুন।`;
@@ -39,15 +55,14 @@ export async function generateMetadata({ params }: Ctx): Promise<Metadata> {
 
 export default async function CakeDetailPage({ params }: Ctx) {
   const { slug } = await params;
-  const store = getStore();
 
-  const cake = await store.getCakeBySlug(slug);
+  const cake = await getCakeBySlug(slug);
   if (!cake || !cake.is_active) notFound();
 
   const [allCakes, reviews, settings] = await Promise.all([
-    store.listCakes(),
-    store.listReviews({ approvedOnly: true }),
-    store.getSettings(),
+    listCachedCakes(),
+    getApprovedReviews(),
+    getCachedSettings(),
   ]);
 
   const cakeReviews = reviews.filter((r) => r.cake_slug === cake.slug);
@@ -220,6 +235,29 @@ export default async function CakeDetailPage({ params }: Ctx) {
                   <Stars value={r.rating} size={14} />
                 </div>
                 <p className="mt-3 text-sm leading-relaxed text-muted">{r.comment}</p>
+
+                {r.photos && r.photos.length > 0 && (
+                  <div className="mt-3 grid grid-cols-3 gap-2">
+                    {r.photos.map((src, i) => (
+                      <a
+                        key={src}
+                        href={src}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="relative aspect-square overflow-hidden rounded-lg border border-line"
+                        aria-label={`${r.customer_name} এর কেকের ছবি ${i + 1}`}
+                      >
+                        <Image
+                          src={src}
+                          alt={`${r.customer_name} এর কেকের ছবি ${i + 1}`}
+                          fill
+                          sizes="(max-width: 768px) 30vw, 200px"
+                          className="object-cover transition-transform duration-300 hover:scale-105"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                )}
               </article>
             ))}
           </div>

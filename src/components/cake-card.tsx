@@ -13,10 +13,13 @@ export function CakeCard({
   cake,
   rating,
   reviewCount = 0,
+  priority = false,
 }: {
   cake: Cake;
   rating?: number;
   reviewCount?: number;
+  /** Above-the-fold cards only (first row of a listing) — preloads the LCP image. */
+  priority?: boolean;
 }) {
   const { add } = useCart();
 
@@ -52,7 +55,7 @@ export function CakeCard({
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="object-cover transition-transform duration-500 group-hover:scale-[1.07]"
-            priority={false}
+            priority={priority}
           />
         )}
 

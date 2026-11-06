@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { randomUUID } from "crypto";
-import { getStore } from "@/lib/store";
+import { getCachedSettings } from "@/lib/store/cache";
 import { OrderWizard } from "@/components/order/order-wizard";
 import { breadcrumbLd, ldJson } from "@/lib/seo";
 import { MIN_DELIVERY_LEAD_DAYS } from "@/lib/constants";
@@ -14,8 +14,12 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
+// The wizard gets a fresh idempotency key and delivery dates calculated at
+// request time — prerendering this route would freeze both.
+export const dynamic = "force-dynamic";
+
 export default async function OrderPage() {
-  const settings = await getStore().getSettings();
+  const settings = await getCachedSettings();
 
   return (
     <div className="container-page py-8">

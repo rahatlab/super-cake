@@ -350,6 +350,26 @@ alter table whatsapp_opt_outs   enable row level security;
 alter table whatsapp_messages   enable row level security;
 
 -- ===========================================================================
+--  7. Email Verifications (for password reset & registration via email)
+-- ===========================================================================
+create table if not exists email_verifications (
+  id          text primary key default ('ev_' || substr(md5(random()::text), 1, 12)),
+  email       text not null,
+  email_key   text not null,
+  purpose     text not null check (purpose in ('register','reset','verify')),
+  code_hash   text not null,
+  expires_at  timestamptz not null,
+  attempts    integer not null default 0,
+  verified_at timestamptz,
+  consumed_at timestamptz,
+  created_at  timestamptz not null default now()
+);
+create index if not exists email_verifications_lookup_idx
+  on email_verifications (email_key, purpose, created_at desc);
+
+alter table email_verifications enable row level security;
+
+-- ===========================================================================
 --  Done. Verify:
 --    select indexname from pg_indexes where tablename in
 --      ('orders','payments','profiles','promo_uses','referral_usage');

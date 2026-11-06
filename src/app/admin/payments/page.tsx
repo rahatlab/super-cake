@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CheckCircle2, Clock3, Wallet } from "lucide-react";
 import { getStore } from "@/lib/store";
-import { cn, formatBDT, formatDateTime, waLink } from "@/lib/utils";
+import { cn, formatBDT, formatDateTime, parsePageParam, waLink } from "@/lib/utils";
 import type { PaymentStatus } from "@/lib/types";
 import { PaymentActions } from "@/components/admin/payment-actions";
+import { Pagination } from "@/components/pagination";
 
 export const metadata: Metadata = { title: "Payments" };
+
+const PAGE_SIZE = 10;
 
 const STATUS_STYLE: Record<PaymentStatus, string> = {
   unpaid: "bg-line/60 text-muted",
@@ -22,7 +25,11 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
   refunded: "ফেরত",
 };
 
-export default async function AdminPaymentsPage() {
+export default async function AdminPaymentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const orders = await getStore().listOrders();
   const bkashOrders = orders
     .filter((o) => o.payment_method === "bkash")
@@ -30,6 +37,11 @@ export default async function AdminPaymentsPage() {
 
   const pending = bkashOrders.filter((o) => o.payment_status === "pending_verify");
   const paid = bkashOrders.filter((o) => o.payment_status === "paid");
+
+  const page = parsePageParam((await searchParams).page);
+  const totalPages = Math.max(1, Math.ceil(bkashOrders.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const visible = bkashOrders.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const cards = [
     {
@@ -115,7 +127,7 @@ export default async function AdminPaymentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {bkashOrders.map((o) => (
+              {visible.map((o) => (
                 <tr key={o.id} className="align-top transition-colors hover:bg-fg/[0.03]">
                   <td className="px-4 py-3">
                     <Link
@@ -166,6 +178,10 @@ export default async function AdminPaymentsPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {bkashOrders.length > 0 && (
+        <Pagination page={safePage} totalPages={totalPages} total={bkashOrders.length} />
       )}
 
       <p className="text-xs text-muted">

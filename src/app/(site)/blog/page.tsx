@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { BookOpen, CalendarDays } from "lucide-react";
-import { getStore } from "@/lib/store";
+import { getCachedSettings, listCachedPosts } from "@/lib/store/cache";
 import { formatDate } from "@/lib/utils";
 import { breadcrumbLd, ldJson, websiteLd } from "@/lib/seo";
 import { ReadingTime } from "@/components/markdown";
@@ -21,12 +21,11 @@ export const metadata: Metadata = {
   },
 };
 
+// Static with a bounded staleness window; admin edits also revalidate the site.
+export const revalidate = 300;
+
 export default async function BlogPage() {
-  const store = getStore();
-  const [posts, settings] = await Promise.all([
-    store.listPosts({ publishedOnly: true }),
-    store.getSettings(),
-  ]);
+  const [posts, settings] = await Promise.all([listCachedPosts(true), getCachedSettings()]);
 
   const [featured, ...rest] = posts;
 
@@ -78,6 +77,7 @@ export default async function BlogPage() {
                     src={featured.cover_image}
                     alt={featured.title}
                     fill
+                    priority
                     sizes="(max-width: 768px) 100vw, 50vw"
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />

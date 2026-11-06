@@ -1,14 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { Star } from "lucide-react";
 import { getStore } from "@/lib/store";
-import { cn, formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime, parsePageParam } from "@/lib/utils";
 import { Stars } from "@/components/star-rating";
 import { ReviewActions } from "@/components/admin/review-actions";
+import { Pagination } from "@/components/pagination";
 
 export const metadata: Metadata = { title: "Reviews" };
 
-export default async function AdminReviewsPage() {
+const PAGE_SIZE = 10;
+
+export default async function AdminReviewsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const reviews = await getStore().listReviews();
   const sorted = [...reviews].sort(
     (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
@@ -20,6 +28,11 @@ export default async function AdminReviewsPage() {
     approved.length > 0
       ? (approved.reduce((s, r) => s + r.rating, 0) / approved.length).toFixed(1)
       : "—";
+
+  const page = parsePageParam((await searchParams).page);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const visible = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="space-y-5">
@@ -55,7 +68,7 @@ export default async function AdminReviewsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {sorted.map((r) => (
+          {visible.map((r) => (
             <article key={r.id} className="card p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -83,6 +96,29 @@ export default async function AdminReviewsPage() {
                     )}
                   </div>
                   <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">{r.comment}</p>
+
+                  {r.photos && r.photos.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {r.photos.map((src, i) => (
+                        <a
+                          key={src}
+                          href={src}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="relative h-16 w-16 overflow-hidden rounded-lg border border-line"
+                          aria-label={`রিভিউ ছবি ${i + 1}`}
+                        >
+                          <Image
+                            src={src}
+                            alt={`রিভিউ ছবি ${i + 1}`}
+                            fill
+                            sizes="64px"
+                            className="object-cover"
+                          />
+                        </a>
+                      ))}
+                    </div>
+                  )}
                   <p className="mt-2 text-[11px] text-muted">
                     অর্ডার <span className="font-mono">{r.order_id}</span> · {formatDateTime(r.created_at)}
                   </p>
@@ -93,6 +129,10 @@ export default async function AdminReviewsPage() {
             </article>
           ))}
         </div>
+      )}
+
+      {sorted.length > 0 && (
+        <Pagination page={safePage} totalPages={totalPages} total={sorted.length} />
       )}
     </div>
   );

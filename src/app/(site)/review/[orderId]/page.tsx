@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import { Lock, PartyPopper } from "lucide-react";
 import { getStore } from "@/lib/store";
@@ -83,6 +84,29 @@ export default async function ReviewPage({
               <Stars value={existing.rating} size={22} />
             </div>
             <p className="mt-3 text-sm text-muted">“{existing.comment}”</p>
+
+            {existing.photos && existing.photos.length > 0 && (
+              <div className="mx-auto mt-4 grid max-w-xs grid-cols-3 gap-2">
+                {existing.photos.map((src, i) => (
+                  <a
+                    key={src}
+                    href={src}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative aspect-square overflow-hidden rounded-lg border border-line"
+                    aria-label={`আপনার ছবি ${i + 1}`}
+                  >
+                    <Image
+                      src={src}
+                      alt={`আপনার ছবি ${i + 1}`}
+                      fill
+                      sizes="120px"
+                      className="object-cover"
+                    />
+                  </a>
+                ))}
+              </div>
+            )}
             <p className="mt-2 text-xs text-muted">
               {existing.is_approved
                 ? "রিভিউটি ওয়েবসাইটে প্রকাশিত হয়েছে।"

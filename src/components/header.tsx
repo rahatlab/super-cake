@@ -16,11 +16,48 @@ const NAV = [
   { href: "/blog", label: "ব্লগ" },
 ];
 
-export function Header({ user }: { user: { name: string; role: string } | null }) {
+interface HeaderUser {
+  name: string;
+  role: string;
+}
+
+/**
+ * Session probe.
+ *
+ * The site layout no longer reads cookies (that would make every page dynamic),
+ * so the header asks the tiny /api/me endpoint once per page load instead.
+ * `ready` lets us render a same-size placeholder rather than flashing "লগইন"
+ * at signed-in users.
+ */
+function useCurrentUser(): { user: HeaderUser | null; ready: boolean } {
+  const [user, setUser] = useState<HeaderUser | null>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    fetch("/api/me", { cache: "no-store", signal: controller.signal })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { user?: HeaderUser | null } | null) => {
+        setUser(data?.user ?? null);
+        setReady(true);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setReady(true);
+      });
+
+    return () => controller.abort();
+  }, []);
+
+  return { user, ready };
+}
+
+export function Header() {
   const pathname = usePathname();
   const { count, setOpen } = useCart();
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const { user, ready } = useCurrentUser();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -52,7 +89,9 @@ export function Header({ user }: { user: { name: string; role: string } | null }
           </span>
         </Link>
 
-        {/* desktop nav */}
+        {/* desktop nav — default `auto` prefetch: full route for static pages,
+            cheapest segment for dynamic ones. Forcing `prefetch={true}` made
+            every link trigger a full server render. */}
         <nav className="hidden items-center gap-1 lg:flex">
           {NAV.map((n) => {
             const active = n.href === "/" ? pathname === "/" : pathname.startsWith(n.href);
@@ -60,7 +99,6 @@ export function Header({ user }: { user: { name: string; role: string } | null }
               <Link
                 key={n.href}
                 href={n.href}
-                prefetch={true}
                 className={`relative rounded-full px-3.5 py-2 text-sm font-semibold transition-colors ${
                   active ? "text-brand-strong" : "text-muted hover:text-fg"
                 }`}
@@ -104,7 +142,12 @@ export function Header({ user }: { user: { name: string; role: string } | null }
             </AnimatePresence>
           </button>
 
-          {user ? (
+          {!ready ? (
+            <span
+              aria-hidden
+              className="hidden h-9 w-24 animate-pulse rounded-full bg-fg/5 sm:block"
+            />
+          ) : user ? (
             <Link
               href={isAdmin ? "/admin" : "/account"}
               className="btn btn-soft btn-sm hidden sm:inline-flex"
@@ -150,7 +193,6 @@ export function Header({ user }: { user: { name: string; role: string } | null }
                 >
                   <Link
                     href={n.href}
-                    prefetch={true}
                     onClick={() => setMenuOpen(false)}
                     className={`block rounded-xl px-3 py-2.5 text-sm font-semibold ${
                       pathname === n.href ? "bg-brand/12 text-brand-strong" : "text-muted hover:bg-fg/5"

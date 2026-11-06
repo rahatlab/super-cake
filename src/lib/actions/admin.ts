@@ -1,12 +1,15 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { after } from "next/server";
 import { getStore } from "@/lib/store";
+import { CACHE_TAGS, type CacheTag } from "@/lib/store/cache";
 import { requireAdmin } from "@/lib/auth";
 import { cakeSchema, postSchema, promoSchema, settingsSchema } from "@/lib/validators";
+import { MAX_CAKE_IMAGES } from "@/lib/constants";
 import { notifyOrderStatus, notifyReviewRequest } from "@/lib/whatsapp";
+import { syncCakesToCatalog, type CatalogSyncResult } from "@/lib/whatsapp/catalog";
 import { storeImages } from "@/lib/upload";
 import type { OrderStatus } from "@/lib/types";
 import type { StockLine } from "@/lib/store/store-interface";
@@ -58,7 +61,16 @@ async function guard() {
   return admin;
 }
 
-function revalidatePublic() {
+/**
+ * Invalidate the public site after an admin write.
+ *
+ * `revalidatePath("/", "layout")` only clears the route/render cache; the
+ * `unstable_cache` entries in `lib/store/cache.ts` need their own tag
+ * invalidation or cached pages would keep serving the old rows. `"max"` gives
+ * stale-while-revalidate semantics so visitors never block on the rebuild.
+ */
+function revalidatePublic(...tags: CacheTag[]) {
+  for (const tag of tags) revalidateTag(tag, "max");
   revalidatePath("/", "layout");
 }
 
@@ -66,6 +78,24 @@ function revalidatePublic() {
 
 function parseSizes(fd: FormData) {
   return parseJsonArray(fd.get("sizes"));
+}
+
+/**
+ * Never surface Postgres/zod internals to the admin UI: constraint text like
+ * `duplicate key value violates unique constraint "cakes_slug_key"` is noise.
+ */
+function friendlyStoreError(e: unknown, subject = "কেক"): string {
+  const msg = (e as Error)?.message ?? "";
+  if (/duplicate key|23505|slug_key|_slug_key/i.test(msg)) {
+    return `এই নামে ${subject} ইতিমধ্যে আছে — নাম একটু আলাদা করে আবার চেষ্টা করুন।`;
+  }
+  if (/Too big|expected array to have <=\d+ items/i.test(msg)) {
+    return `সর্বোচ্চ ${MAX_CAKE_IMAGES} টি ছবি রাখা যায়।`;
+  }
+  if (/does not exist|PGRST204/i.test(msg)) {
+    return "ডেটাবেসে প্রয়োজনীয় কলাম নেই — supabase/ ফোল্ডারের নতুন মাইগ্রেশন SQL চালান।";
+  }
+  return msg || `${subject} সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।`;
 }
 
 export async function saveCakeAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
@@ -101,8 +131,22 @@ export async function saveCakeAction(_prev: ActionState, fd: FormData): Promise<
     if (id) {
       const updated = await store.updateCake(id, cake);
       await store.setCakeSizes(id, sizes.length ? sizes : [{ weight: 1, price: cake.base_price, is_available: true }]);
-      revalidatePublic();
+      revalidatePublic(CACHE_TAGS.cakes);
       return { success: `"${updated.name}" আপডেট হয়েছে`, id: updated.id };
+    }
+
+    // Server-side double-submit guard. The client locks synchronously, but a
+    // retry (flaky network, restored tab, two devices) can still reach here —
+    // and the local store silently auto-suffixes the slug, so a duplicate
+    // would succeed there while Supabase rejected it. Reject both the same way.
+    const nameKey = cake.name.trim().toLowerCase();
+    const existing = await store.listCakes({ includeInactive: true });
+    const duplicate = existing.find((c) => c.name.trim().toLowerCase() === nameKey);
+    if (duplicate) {
+      return {
+        error: `"${duplicate.name}" ইতিমধ্যে তৈরি আছে — ডাবল ক্লিক হয়েছে না কিনা দেখুন।`,
+        id: duplicate.id,
+      };
     }
 
     const created = await store.createCake(cake);
@@ -110,10 +154,10 @@ export async function saveCakeAction(_prev: ActionState, fd: FormData): Promise<
       created.id,
       sizes.length ? sizes : [{ weight: 1, price: cake.base_price, is_available: true }],
     );
-    revalidatePublic();
+    revalidatePublic(CACHE_TAGS.cakes);
     return { success: `"${created.name}" যোগ হয়েছে`, id: created.id };
   } catch (e) {
-    return { error: (e as Error).message };
+    return { error: friendlyStoreError(e, "কেক") };
   }
 }
 
@@ -121,7 +165,7 @@ export async function deleteCakeAction(id: string): Promise<ActionState> {
   await guard();
   try {
     await getStore().deleteCake(id);
-    revalidatePublic();
+    revalidatePublic(CACHE_TAGS.cakes);
     return { success: "কেক মুছে ফেলা হয়েছে" };
   } catch (e) {
     return { error: (e as Error).message };
@@ -135,6 +179,16 @@ export async function uploadImagesAction(fd: FormData): Promise<{
 }> {
   await guard();
   const files = fd.getAll("images").filter((f): f is File => f instanceof File && f.size > 0);
+
+  // cakeSchema.image_urls is capped at MAX_CAKE_IMAGES, so reject the excess
+  // here instead of failing validation on save with a raw zod message.
+  if (files.length > MAX_CAKE_IMAGES) {
+    return {
+      urls: [],
+      error: `সর্বোচ্চ ${MAX_CAKE_IMAGES} টি ছবি একসাথে আপলোড করা যায় (আপনি ${files.length} টি দিয়েছেন)`,
+    };
+  }
+
   const result = await storeImages(files);
   if (!result.urls.length) return { urls: [], error: result.error ?? "আপলোড ব্যর্থ হয়েছে" };
   return { urls: result.urls, mode: result.mode };
@@ -169,6 +223,11 @@ export async function updateOrderStatusAction(
   try {
     await store.updateOrder(orderId, { order_status: status });
 
+    // Auto-mark payment as paid when order is completed (COD orders)
+    if (status === "completed" && order.payment_method === "cod" && order.payment_status !== "paid") {
+      await store.updateOrder(orderId, { payment_status: "paid" });
+    }
+
     if (status === "cancelled") {
       // Releasing stock and discount reservations makes cancelled orders safe
       // to audit: the same slot/usage can be sold again.
@@ -180,8 +239,8 @@ export async function updateOrderStatusAction(
       await store.releasePromo(order.id);
       await store.releaseReferral(order.id);
 
-      const payments = await store.listPayments();
-      for (const payment of payments.filter((p) => p.order_id === order.id)) {
+      const payments = await store.listPayments({ orderId: order.id });
+      for (const payment of payments) {
         await store.updatePayment(payment.id, {
           status: payment.status === "paid" ? "refunded" : "unpaid",
         });
@@ -201,12 +260,13 @@ export async function updateOrderStatusAction(
       // Send after the admin response so Meta latency never blocks the UI.
       after(async () => {
         try {
+          // Re-read: the summary quotes payment status and totals, which may
+          // have changed since `order` was loaded.
+          const fresh = (await store.getOrderById(orderId)) ?? order;
           await notifyOrderStatus({
-            phone: order.phone,
-            orderNo: order.order_no,
+            order: fresh,
             status,
             storeName: settings.store_name,
-            orderId: order.id,
           });
 
           if (
@@ -214,10 +274,10 @@ export async function updateOrderStatusAction(
             !order.review_requested_at
           ) {
             const result = await notifyReviewRequest({
-              phone: order.phone,
-              customerName: order.customer_name,
-              orderNo: order.order_no,
-              orderId: order.id,
+              phone: fresh.phone,
+              customerName: fresh.customer_name,
+              orderNo: fresh.order_no,
+              orderId: fresh.id,
             });
             if (result.ok) {
               await store.updateOrder(orderId, {
@@ -255,8 +315,7 @@ export async function verifyPaymentAction(orderId: string, approve: boolean): Pr
   }
 
   try {
-    const payments = await store.listPayments();
-    const candidates = payments.filter((p) => p.order_id === orderId);
+    const candidates = await store.listPayments({ orderId });
     const payment =
       candidates.find((p) => p.status === "pending_verify") ?? candidates[0] ?? null;
 
@@ -289,12 +348,12 @@ export async function verifyPaymentAction(orderId: string, approve: boolean): Pr
       const settings = await store.getSettings();
       after(async () => {
         try {
+          // Re-read so the confirmation quotes the freshly-paid status.
+          const fresh = (await store.getOrderById(orderId)) ?? order;
           await notifyOrderStatus({
-            phone: order.phone,
-            orderNo: order.order_no,
+            order: fresh,
             status: "confirmed",
             storeName: settings.store_name,
-            orderId: order.id,
           });
         } catch (e) {
           console.warn("[admin] WhatsApp notify failed:", (e as Error).message);
@@ -366,12 +425,12 @@ export async function moderateReviewAction(id: string, approve: boolean): Promis
     if (approve) {
       await getStore().updateReview(id, { is_approved: true });
       revalidatePath("/admin/reviews");
-      revalidatePublic();
+      revalidatePublic(CACHE_TAGS.reviews);
       return { success: "রিভিউ approve হয়েছে" };
     }
     await getStore().deleteReview(id);
     revalidatePath("/admin/reviews");
-    revalidatePublic();
+    revalidatePublic(CACHE_TAGS.reviews);
     return { success: "রিভিউ মুছে ফেলা হয়েছে" };
   } catch (e) {
     return { error: (e as Error).message };
@@ -400,15 +459,15 @@ export async function savePostAction(_prev: ActionState, fd: FormData): Promise<
     if (id) {
       await store.updatePost(id, parsed.data);
       revalidatePath("/admin/blog");
-      revalidatePublic();
+      revalidatePublic(CACHE_TAGS.posts);
       return { success: "ব্লগ আপডেট হয়েছে" };
     }
     const post = await store.createPost(parsed.data);
     revalidatePath("/admin/blog");
-    revalidatePublic();
+    revalidatePublic(CACHE_TAGS.posts);
     return { success: "ব্লগ তৈরি হয়েছে", id: post.id };
   } catch (e) {
-    return { error: (e as Error).message };
+    return { error: friendlyStoreError(e, "পোস্ট") };
   }
 }
 
@@ -417,7 +476,7 @@ export async function deletePostAction(id: string): Promise<ActionState> {
   try {
     await getStore().deletePost(id);
     revalidatePath("/admin/blog");
-    revalidatePublic();
+    revalidatePublic(CACHE_TAGS.posts);
     return { success: "ব্লগ মুছে ফেলা হয়েছে" };
   } catch (e) {
     return { error: (e as Error).message };
@@ -453,7 +512,7 @@ export async function saveBannerAction(_prev: ActionState, fd: FormData): Promis
       await store.createBanner(payload);
     }
     revalidatePath("/admin/banners");
-    revalidatePublic();
+    revalidatePublic(CACHE_TAGS.banners);
     return { success: "ব্যানার সেভ হয়েছে" };
   } catch (e) {
     return { error: (e as Error).message };
@@ -465,7 +524,7 @@ export async function deleteBannerAction(id: string): Promise<ActionState> {
   try {
     await getStore().deleteBanner(id);
     revalidatePath("/admin/banners");
-    revalidatePublic();
+    revalidatePublic(CACHE_TAGS.banners);
     return { success: "ব্যানার মুছে ফেলা হয়েছে" };
   } catch (e) {
     return { error: (e as Error).message };
@@ -492,12 +551,29 @@ export async function saveSettingsAction(_prev: ActionState, fd: FormData): Prom
     bkash_enabled: fd.get("bkash_enabled") === "on",
     instagram: String(fd.get("instagram") ?? "") || undefined,
     facebook: String(fd.get("facebook") ?? "") || undefined,
+    extra_tier_fee: Math.max(0, Math.floor(Number(fd.get("extra_tier_fee") ?? 300) || 300)),
+    syrup_prices: {
+      none: 0,
+      vanilla: Math.max(0, Math.floor(Number(fd.get("syrup_vanilla") ?? 0) || 0)),
+      chocolate: Math.max(0, Math.floor(Number(fd.get("syrup_chocolate") ?? 0) || 0)),
+      strawberry: Math.max(0, Math.floor(Number(fd.get("syrup_strawberry") ?? 0) || 0)),
+      coffee: Math.max(0, Math.floor(Number(fd.get("syrup_coffee") ?? 0) || 0)),
+      honey: Math.max(0, Math.floor(Number(fd.get("syrup_honey") ?? 0) || 0)),
+      rose: Math.max(0, Math.floor(Number(fd.get("syrup_rose") ?? 0) || 0)),
+    },
+    crown_prices: {
+      none: 0,
+      sprinkles: Math.max(0, Math.floor(Number(fd.get("crown_sprinkles") ?? 0) || 0)),
+      pearls: Math.max(0, Math.floor(Number(fd.get("crown_pearls") ?? 0) || 0)),
+      macarons: Math.max(0, Math.floor(Number(fd.get("crown_macarons") ?? 0) || 0)),
+      flowers: Math.max(0, Math.floor(Number(fd.get("crown_flowers") ?? 0) || 0)),
+    },
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   try {
     await getStore().updateSettings(parsed.data);
-    revalidatePath("/", "layout");
+    revalidatePublic(CACHE_TAGS.settings);
     revalidatePath("/admin/settings");
     return { success: "সেটিংস সেভ হয়েছে" };
   } catch (e) {
@@ -512,11 +588,23 @@ export async function toggleCakeActiveAction(id: string, active: boolean): Promi
   try {
     await getStore().updateCake(id, { is_active: active });
     revalidatePath("/admin/cakes");
-    revalidatePublic();
+    revalidatePublic(CACHE_TAGS.cakes);
     return { success: active ? "চালু হয়েছে" : "বন্ধ হয়েছে" };
   } catch (e) {
     return { error: (e as Error).message };
   }
+}
+
+/* ----------------------------- WhatsApp catalog ----------------------------- */
+
+/**
+ * Push the cake list into the Meta catalog linked to this WhatsApp number, so
+ * customers can order straight from the shared catalog in a chat. Returns a
+ * summary the admin button turns into a toast.
+ */
+export async function syncCatalogAction(): Promise<CatalogSyncResult> {
+  await guard();
+  return syncCakesToCatalog();
 }
 
 /* ----------------------------- notifications ----------------------------- */
@@ -545,5 +633,60 @@ export async function markAllNotificationsReadAction(): Promise<ActionState> {
     return { success: "সব নোটিফিকেশন পড়া হয়েছে" };
   } catch (e) {
     return { error: (e as Error).message };
+  }
+}
+
+/* ----------------------------- user management ----------------------------- */
+
+export async function toggleUserBlockAction(userId: string, isBlocked: boolean): Promise<ActionState> {
+  await guard();
+  try {
+    const store = getStore();
+    const user = await store.getUserById(userId);
+    if (!user) return { error: "ইউজার পাওয়া যায়নি" };
+
+    if (user.role === "admin") {
+      return { error: "এডমিনকে ব্লক করা যাবে না" };
+    }
+
+    await store.toggleUserBlock(userId, isBlocked);
+    revalidatePath("/admin/users");
+
+    return {
+      success: isBlocked
+        ? `${user.name} ব্লক করা হয়েছে — এই নম্বর দিয়ে আর অর্ডার করতে পারবে না`
+        : `${user.name} আনব্লক করা হয়েছে`
+    };
+  } catch (e) {
+    return { error: friendlyStoreError(e, "ইউজার") };
+  }
+}
+
+/**
+ * 🚩 Toggle the fake-order marker on an order. Flagged orders roll up into the
+ * customer's stats on the users screen so repeat offenders are easy to spot.
+ */
+export async function toggleOrderFlagAction(
+  orderId: string,
+  flagged: boolean,
+): Promise<ActionState> {
+  await guard();
+  try {
+    const store = getStore();
+    const order = await store.getOrderById(orderId);
+    if (!order) return { error: "অর্ডার পাওয়া যায়নি" };
+
+    await store.setOrderFlag(orderId, flagged);
+    revalidatePath(`/admin/orders/${orderId}`);
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/users");
+
+    return {
+      success: flagged
+        ? `🚩 অর্ডার ${order.order_no} ফেক হিসেবে চিহ্নিত হয়েছে`
+        : `অর্ডার ${order.order_no} থেকে ফেক চিহ্ন সরানো হয়েছে`,
+    };
+  } catch (e) {
+    return { error: friendlyStoreError(e, "অর্ডার") };
   }
 }

@@ -86,10 +86,21 @@ export function CakeGallery({ images, name }: { images: string[]; name: string }
               key={src + i}
               onClick={() => setIndex(i)}
               aria-label={`ছবি ${i + 1}`}
+              aria-current={i === index}
               className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 transition-all ${
                 i === index ? "border-brand opacity-100" : "border-transparent opacity-60 hover:opacity-100"
               }`}
             >
+              <Image
+                src={src}
+                alt={`${name} — ছবি ${i + 1}`}
+                fill
+                sizes="64px"
+                // The active thumbnail is already on screen with the main
+                // image; only the rest wait until the row scrolls into view.
+                loading={i === index ? "eager" : "lazy"}
+                className="object-cover"
+              />
             </button>
           ))}
         </div>

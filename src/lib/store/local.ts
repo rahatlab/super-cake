@@ -7,6 +7,7 @@ import type {
   DashboardStats,
   Notification,
   Order,
+  OrderStatusHistory,
   Payment,
   Profile,
   PromoCode,
@@ -14,8 +15,9 @@ import type {
   Review,
   Settings,
   PhoneVerification,
+  EmailVerification,
 } from "@/lib/types";
-import { uid, slugify, generateOrderNo, phoneKey } from "@/lib/utils";
+import { uid, slugBase, pickUniqueSlug, generateOrderNo, phoneKey } from "@/lib/utils";
 import type {
   CreateOrderInput,
   StockLine,
@@ -48,6 +50,7 @@ interface DB {
   users: (Profile & { password: string })[];
   cakes: Cake[];
   orders: Order[];
+  order_status_history: OrderStatusHistory[];
   payments: Payment[];
   promos: PromoCode[];
   referrals: Referral[];
@@ -55,6 +58,7 @@ interface DB {
   referral_usage: UsageRow[];
   reviews: Review[];
   verifications: PhoneVerification[];
+  email_verifications: EmailVerification[];
   posts: BlogPost[];
   banners: Banner[];
   notifications: Notification[];
@@ -71,6 +75,11 @@ function publicProfile(user: Profile & { password: string }): Profile {
     phone: user.phone,
     email: user.email,
     role: user.role,
+    birthdate: user.birthdate ?? null,
+    anniversary_date: user.anniversary_date ?? null,
+    last_birthday_wish: user.last_birthday_wish ?? null,
+    last_anniversary_wish: user.last_anniversary_wish ?? null,
+    is_blocked: user.is_blocked ?? false,
     created_at: user.created_at,
   };
 }
@@ -82,6 +91,7 @@ function freshDB(): DB {
     users: buildSeedUsers(),
     cakes,
     orders: buildSeedOrders(cakes),
+    order_status_history: [],
     payments: [],
     promos: buildSeedPromos(),
     referrals: buildSeedReferrals(),
@@ -89,6 +99,7 @@ function freshDB(): DB {
     referral_usage: [],
     reviews: buildSeedReviews(cakes),
     verifications: [],
+    email_verifications: [],
     posts: buildSeedPosts(),
     banners: buildSeedBanners(),
     notifications: buildSeedNotifications(),
@@ -108,10 +119,12 @@ async function load(): Promise<DB> {
       return {
         ...freshDB(),
         ...parsed,
+        settings: { ...SEED_SETTINGS, ...parsed.settings },
         referrals: Array.isArray(parsed.referrals) ? parsed.referrals : buildSeedReferrals(),
         promo_uses: Array.isArray(parsed.promo_uses) ? parsed.promo_uses : [],
         referral_usage: Array.isArray(parsed.referral_usage) ? parsed.referral_usage : [],
         verifications: Array.isArray(parsed.verifications) ? parsed.verifications : [],
+        email_verifications: Array.isArray(parsed.email_verifications) ? parsed.email_verifications : [],
       } as DB;
     } catch {
       const db = freshDB();
@@ -134,6 +147,21 @@ async function persist(db: DB): Promise<void> {
  * Serialise writes and mutate a clone so a thrown error cannot leave the
  * in-memory database half-updated.
  */
+/**
+ * First free slug derived from `base` (`name`, `-2`, -3, ...), ignoring the
+ * row being edited. Mirrors the UNIQUE index the production tables have.
+ */
+function uniqueSlugIn(
+  rows: { id: string; slug: string }[],
+  base: string,
+  excludeId: string,
+): string {
+  return pickUniqueSlug(
+    base,
+    rows.filter((r) => r.id !== excludeId).map((r) => r.slug),
+  );
+}
+
 async function tx<T>(fn: (db: DB) => T | Promise<T>): Promise<T> {
   const g = globalThis as unknown as {
     __scdb?: Promise<DB>;
@@ -188,6 +216,7 @@ function dashboardStats(db: DB): DashboardStats {
     .map(([day, revenue]) => ({ day, revenue }));
 
   const ratings = db.reviews.filter((r) => r.is_approved).map((r) => r.rating);
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 
   return {
     total_orders: active.length,
@@ -201,6 +230,8 @@ function dashboardStats(db: DB): DashboardStats {
     avg_rating: ratings.length
       ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10
       : 0,
+    total_users: db.users.length,
+    new_users_7d: db.users.filter((u) => Date.parse(u.created_at) >= weekAgo).length,
     orders_by_occasion: [...occasionMap.entries()].map(([name, value]) => ({ name, value })),
     orders_by_payment: [...paymentMap.entries()].map(([name, value]) => ({ name, value })),
     promo_usage: [...promoMap.entries()].map(([name, value]) => ({ name, value })),
@@ -239,9 +270,11 @@ export const localStore: Store = {
     if (!u) return null;
     return publicProfile(u);
   },
-  async listUsers() {
+  async listUsers(opts) {
     const db = await load();
-    return db.users.map(publicProfile);
+    const sorted = [...db.users].sort((a, b) => b.created_at.localeCompare(a.created_at));
+    const rows = sorted.map(publicProfile);
+    return typeof opts?.limit === "number" ? rows.slice(0, opts.limit) : rows;
   },
   async createUser(data) {
     return tx((db) => {
@@ -276,6 +309,36 @@ export const localStore: Store = {
       const user = db.users.find((u) => u.id === userId);
       if (!user) throw new Error("ইউজার পাওয়া যায়নি");
       user.password = passwordHash;
+    });
+  },
+  async updateProfile(userId, patch) {
+    return tx((db) => {
+      const user = db.users.find((u) => u.id === userId);
+      if (!user) throw new Error("ইউজার পাওয়া যায়নি");
+      if (patch.name !== undefined) user.name = patch.name;
+      if (patch.birthdate !== undefined) user.birthdate = patch.birthdate || null;
+      if (patch.anniversary_date !== undefined) user.anniversary_date = patch.anniversary_date || null;
+      return publicProfile(user);
+    });
+  },
+  async toggleUserBlock(userId, isBlocked) {
+    return tx((db) => {
+      const user = db.users.find((u) => u.id === userId);
+      if (!user) throw new Error("ইউজার পাওয়া যায়নি");
+      user.is_blocked = isBlocked;
+    });
+  },
+  async markWishSent(userId, kind, date) {
+    return tx((db): boolean => {
+      const user = db.users.find((u) => u.id === userId);
+      if (!user) throw new Error("ইউজার পাওয়া যায়নি");
+      const column = kind === "birthday" ? "last_birthday_wish" : "last_anniversary_wish";
+      // Written before the send on purpose: a crash mid-send must never cause
+      // a second greeting the same day.
+      if (user[column] === date) return false;
+      if (kind === "birthday") user.last_birthday_wish = date;
+      else user.last_anniversary_wish = date;
+      return true;
     });
   },
 
@@ -323,6 +386,49 @@ export const localStore: Store = {
     });
   },
 
+  /* email verification */
+  async saveEmailVerification(data) {
+    return tx((db) => {
+      const record: EmailVerification = {
+        id: uid("ev"),
+        email: data.email,
+        email_key: data.email.trim().toLowerCase(),
+        purpose: data.purpose,
+        code_hash: data.code_hash,
+        expires_at: data.expires_at,
+        attempts: 0,
+        verified_at: data.verified_at ?? null,
+        consumed_at: null,
+        created_at: new Date().toISOString(),
+      };
+      db.email_verifications.unshift(record);
+      const mine = db.email_verifications.filter((v) => v.email_key === record.email_key);
+      if (mine.length > 20) {
+        db.email_verifications = db.email_verifications.filter(
+          (v) => v.email_key !== record.email_key || mine.slice(0, 20).includes(v),
+        );
+      }
+      return record;
+    });
+  },
+  async getLatestEmailVerification(email, purpose) {
+    const db = await load();
+    const key = email.trim().toLowerCase();
+    return (
+      db.email_verifications
+        .filter((v) => v.email_key === key && (!purpose || v.purpose === purpose))
+        .sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null
+    );
+  },
+  async updateEmailVerification(id, patch) {
+    return tx((db) => {
+      const i = db.email_verifications.findIndex((v) => v.id === id);
+      if (i < 0) throw new Error("Email verification not found");
+      db.email_verifications[i] = { ...db.email_verifications[i], ...patch };
+      return db.email_verifications[i];
+    });
+  },
+
   /* cakes */
   async listCakes(opts) {
     const db = await load();
@@ -341,11 +447,14 @@ export const localStore: Store = {
       const cake: Cake = {
         ...data,
         id: uid("cake"),
-        slug: data.slug || slugify(data.name),
+        slug: "",
         created_at: new Date().toISOString(),
         image_urls: data.image_urls?.length ? data.image_urls : ["/cakes/custom-placeholder.svg"],
         sizes: [],
       };
+      // slugBase handles non-Latin names (slugify would return ""); the helper
+      // keeps the slug unique just like the production UNIQUE index.
+      cake.slug = uniqueSlugIn(db.cakes, data.slug || slugBase(data.name, "cake"), cake.id);
       db.cakes.unshift(cake);
       return cake;
     });
@@ -354,11 +463,17 @@ export const localStore: Store = {
     return tx((db) => {
       const i = db.cakes.findIndex((c) => c.id === id);
       if (i < 0) throw new Error("Cake not found");
-      db.cakes[i] = { ...db.cakes[i], ...patch };
-      if (patch.slug === undefined && patch.name) {
-        db.cakes[i].slug = slugify(patch.name);
+      const previous = db.cakes[i];
+      const next: Cake = { ...previous, ...patch };
+
+      if (patch.slug !== undefined) {
+        next.slug = uniqueSlugIn(db.cakes, patch.slug || slugBase(patch.name ?? previous.name, "cake"), id);
+      } else if (patch.name && patch.name !== previous.name) {
+        next.slug = uniqueSlugIn(db.cakes, slugBase(patch.name, "cake"), id);
       }
-      return db.cakes[i];
+
+      db.cakes[i] = next;
+      return next;
     });
   },
   async deleteCake(id) {
@@ -384,9 +499,10 @@ export const localStore: Store = {
   },
 
   /* orders */
-  async listOrders() {
+  async listOrders(opts) {
     const db = await load();
-    return [...db.orders].sort((a, b) => b.created_at.localeCompare(a.created_at));
+    const sorted = [...db.orders].sort((a, b) => b.created_at.localeCompare(a.created_at));
+    return typeof opts?.limit === "number" ? sorted.slice(0, opts.limit) : sorted;
   },
   async getOrderById(id) {
     const db = await load();
@@ -413,6 +529,29 @@ export const localStore: Store = {
     return db.orders
       .filter((o) => o.user_id === userId)
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
+  },
+  async getOrderStatsForUser(key) {
+    const db = await load();
+    const byUser = key.userId ? db.orders.filter((o) => o.user_id === key.userId) : [];
+    const byPhone =
+      key.phone && phoneKey(key.phone).length >= 10
+        ? db.orders.filter((o) => phoneKey(o.phone) === phoneKey(key.phone!))
+        : [];
+
+    // Same row matched by both user id and phone must count once.
+    const byId = new Map<string, Order>();
+    for (const o of [...byUser, ...byPhone]) byId.set(o.id, o);
+    const rows = [...byId.values()];
+
+    return {
+      total: rows.length,
+      cancelled: rows.filter((o) => o.order_status === "cancelled").length,
+      delivered: rows.filter((o) => ["delivered", "completed"].includes(o.order_status)).length,
+      flagged: rows.filter((o) => o.is_flagged).length,
+      spent: rows
+        .filter((o) => o.order_status !== "cancelled")
+        .reduce((s, o) => s + o.total, 0),
+    };
   },
   async findOrderByIdempotencyKey(key) {
     if (!key) return null;
@@ -452,6 +591,13 @@ export const localStore: Store = {
       };
 
       db.orders.unshift(order);
+      db.order_status_history.push({
+        id: uid("osh"),
+        order_id: order.id,
+        status: order.order_status,
+        note: null,
+        created_at: now,
+      });
 
       if (order.payment_method === "bkash" && order.bkash_trx_id) {
         db.payments.unshift({
@@ -482,9 +628,59 @@ export const localStore: Store = {
     return tx((db) => {
       const i = db.orders.findIndex((o) => o.id === id);
       if (i < 0) throw new Error("Order not found");
-      db.orders[i] = { ...db.orders[i], ...patch, updated_at: new Date().toISOString() };
+      const previous = db.orders[i];
+      const now = new Date().toISOString();
+      db.orders[i] = { ...previous, ...patch, updated_at: now };
+
+      // Timeline rows are append-only: only record real transitions, not
+      // rewrites of the same status (e.g. idempotency-key bookkeeping).
+      if (patch.order_status && patch.order_status !== previous.order_status) {
+        if (!Array.isArray(db.order_status_history)) db.order_status_history = [];
+        db.order_status_history.push({
+          id: uid("osh"),
+          order_id: id,
+          status: patch.order_status,
+          note: null,
+          created_at: now,
+        });
+      }
+
       return db.orders[i];
     });
+  },
+  async setOrderFlag(orderId, flagged) {
+    return tx((db) => {
+      const i = db.orders.findIndex((o) => o.id === orderId);
+      if (i < 0) throw new Error("Order not found");
+      db.orders[i] = {
+        ...db.orders[i],
+        is_flagged: flagged,
+        updated_at: new Date().toISOString(),
+      };
+    });
+  },
+
+  async listOrderStatusHistory(orderId) {
+    const db = await load();
+    const rows = (db.order_status_history ?? [])
+      .filter((h) => h.order_id === orderId)
+      .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    if (rows.length) return rows;
+
+    // Back-compat for orders that predate the history table: at least show
+    // when the order was placed.
+    const order = db.orders.find((o) => o.id === orderId);
+    return order
+      ? [
+          {
+            id: `${order.id}_seed`,
+            order_id: order.id,
+            status: "pending" as const,
+            note: null,
+            created_at: order.created_at,
+          },
+        ]
+      : [];
   },
 
   /* stock */
@@ -600,9 +796,15 @@ export const localStore: Store = {
   },
 
   /* payments */
-  async listPayments() {
+  async listPayments(opts) {
     const db = await load();
-    return [...db.payments].sort((a, b) => b.created_at.localeCompare(a.created_at));
+    let rows = db.payments;
+    if (opts?.orderId) rows = rows.filter((p) => p.order_id === opts.orderId);
+    if (opts?.trxId) {
+      const needle = opts.trxId.trim().toUpperCase();
+      rows = rows.filter((p) => p.trx_id && p.trx_id.toUpperCase() === needle);
+    }
+    return [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at));
   },
   async updatePayment(id, patch) {
     return tx((db) => {
@@ -722,10 +924,13 @@ export const localStore: Store = {
       const post: BlogPost = {
         ...data,
         id: uid("post"),
-        slug: data.slug || slugify(data.title),
+        slug: "",
         created_at: new Date().toISOString(),
         published_at: data.is_published ? new Date().toISOString() : null,
       };
+      // slugify strips non-Latin titles to ""; slugBase gives a stable
+      // fallback and uniqueSlugIn keeps the UNIQUE index happy.
+      post.slug = uniqueSlugIn(db.posts, data.slug || slugBase(data.title, "post"), post.id);
       db.posts.unshift(post);
       return post;
     });
@@ -734,12 +939,24 @@ export const localStore: Store = {
     return tx((db) => {
       const i = db.posts.findIndex((p) => p.id === id);
       if (i < 0) throw new Error("Post not found");
-      db.posts[i] = { ...db.posts[i], ...patch };
-      if (patch.title && !patch.slug) db.posts[i].slug = slugify(patch.title);
-      if (patch.is_published && !db.posts[i].published_at) {
-        db.posts[i].published_at = new Date().toISOString();
+      const previous = db.posts[i];
+      const next: BlogPost = { ...previous, ...patch };
+
+      if (patch.slug !== undefined) {
+        next.slug = uniqueSlugIn(
+          db.posts,
+          patch.slug || slugBase(patch.title ?? previous.title, "post"),
+          id,
+        );
+      } else if (patch.title && patch.title !== previous.title) {
+        next.slug = uniqueSlugIn(db.posts, slugBase(patch.title, "post"), id);
       }
-      return db.posts[i];
+      if (patch.is_published && !next.published_at) {
+        next.published_at = new Date().toISOString();
+      }
+
+      db.posts[i] = next;
+      return next;
     });
   },
   async deletePost(id) {

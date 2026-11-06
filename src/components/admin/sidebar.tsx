@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Megaphone,
   Menu,
+  MessageCircle,
   Percent,
   Settings as SettingsIcon,
   Star,
@@ -29,6 +30,7 @@ const LINKS = [
   { href: "/admin/reviews", label: "Reviews", bn: "রিভিউ", icon: Star },
   { href: "/admin/blog", label: "Blog", bn: "ব্লগ", icon: FileText },
   { href: "/admin/banners", label: "Banner", bn: "ব্যানার", icon: Megaphone },
+  { href: "/admin/whatsapp", label: "WhatsApp", bn: "মেসেজ", icon: MessageCircle },
   { href: "/admin/notifications", label: "Notifications", bn: "নোটিফিকেশন", icon: Bell },
   { href: "/admin/settings", label: "Settings", bn: "সেটিংস", icon: SettingsIcon },
 ];

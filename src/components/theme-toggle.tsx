@@ -12,11 +12,18 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
   useEffect(() => setMounted(true), []);
 
   const isDark = resolvedTheme === "dark";
+  // `resolvedTheme` is only known after hydration, so the label has to wait for
+  // `mounted` too — otherwise the server and client disagree on first paint.
+  const label = !mounted
+    ? "থিম পরিবর্তন করুন"
+    : isDark
+      ? "Light theme চালু করুন"
+      : "Dark theme চালু করুন";
 
   return (
     <button
       type="button"
-      aria-label={isDark ? "Light theme চালু করুন" : "Dark theme চালু করুন"}
+      aria-label={label}
       onClick={() => setTheme(isDark ? "light" : "dark")}
       className={`relative grid h-10 w-10 place-items-center overflow-hidden rounded-full border border-line bg-surface transition-colors hover:border-brand/50 ${className}`}
     >

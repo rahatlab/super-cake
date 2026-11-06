@@ -3,17 +3,29 @@ import Link from "next/link";
 import Image from "next/image";
 import { ExternalLink, Pencil, Plus } from "lucide-react";
 import { getStore } from "@/lib/store";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, parsePageParam } from "@/lib/utils";
 import { PostRowActions } from "@/components/admin/post-row-actions";
+import { Pagination } from "@/components/pagination";
 
 export const metadata: Metadata = { title: "Blog" };
 
-export default async function AdminBlogPage() {
+const PAGE_SIZE = 10;
+
+export default async function AdminBlogPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const posts = await getStore().listPosts();
   const sorted = [...posts].sort(
     (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
   );
   const published = sorted.filter((p) => p.is_published).length;
+
+  const page = parsePageParam((await searchParams).page);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const visible = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="space-y-5">
@@ -62,7 +74,7 @@ export default async function AdminBlogPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
-              {sorted.map((p) => (
+              {visible.map((p) => (
                 <tr key={p.id} className="align-top transition-colors hover:bg-fg/[0.03]">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
@@ -132,6 +144,10 @@ export default async function AdminBlogPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {sorted.length > 0 && (
+        <Pagination page={safePage} totalPages={totalPages} total={sorted.length} />
       )}
     </div>
   );

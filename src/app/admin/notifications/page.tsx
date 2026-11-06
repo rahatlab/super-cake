@@ -2,11 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { getStore } from "@/lib/store";
-import { cn, formatDateTime } from "@/lib/utils";
+import { cn, formatDateTime, parsePageParam } from "@/lib/utils";
 import type { Notification } from "@/lib/types";
 import { MarkAllReadButton, MarkReadButton } from "@/components/admin/notification-actions";
+import { Pagination } from "@/components/pagination";
 
 export const metadata: Metadata = { title: "Notifications" };
+
+const PAGE_SIZE = 10;
 
 const TYPE_META: Record<
   Notification["type"],
@@ -18,12 +21,21 @@ const TYPE_META: Record<
   system: { label: "সিস্টেম", emoji: "🔔", href: "/admin", tone: "bg-line/60 text-muted" },
 };
 
-export default async function AdminNotificationsPage() {
+export default async function AdminNotificationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
   const notifications = await getStore().listNotifications();
   const sorted = [...notifications].sort(
     (a, b) => +new Date(b.created_at) - +new Date(a.created_at),
   );
   const unread = sorted.filter((n) => !n.is_read).length;
+
+  const page = parsePageParam((await searchParams).page);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const visible = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   return (
     <div className="space-y-5">
@@ -47,7 +59,7 @@ export default async function AdminNotificationsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {sorted.map((n) => {
+          {visible.map((n) => {
             const meta = TYPE_META[n.type] ?? TYPE_META.system;
             return (
               <article
@@ -84,6 +96,10 @@ export default async function AdminNotificationsPage() {
             );
           })}
         </div>
+      )}
+
+      {sorted.length > 0 && (
+        <Pagination page={safePage} totalPages={totalPages} total={sorted.length} />
       )}
     </div>
   );
