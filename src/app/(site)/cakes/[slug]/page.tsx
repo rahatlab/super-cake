@@ -83,7 +83,7 @@ export default async function CakeDetailPage({ params }: Ctx) {
 
   const wa = waLink(
     settings.whatsapp_phone,
-    `হ্যালো ${settings.store_name}! আমি "${cake.name}" সম্পর্কে জানতে চাই।`,
+    `"${cake.name}"`,
   );
 
   return (
