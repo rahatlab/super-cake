@@ -1,10 +1,12 @@
-import { MIN_DELIVERY_LEAD_DAYS, OCCASIONS, ORDER_STATUS_META, SITE } from "@/lib/constants";
+import { OCCASIONS, ORDER_STATUS_META, SITE } from "@/lib/constants";
 import { getStore } from "@/lib/store";
 import type { Cake, CakeSize, Order, Settings } from "@/lib/types";
 import { dhakaDatePlus, formatBDT, orderStatusHeadline, phoneDigits, waLink } from "@/lib/utils";
 import { BUTTON_COMMANDS, MENU_BUTTONS, type WsButton } from "@/lib/whatsapp-menu";
 import { markPhoneOptedOut, markPhoneSubscribed } from "./log";
 import { markCartOptIn } from "./cart";
+import { clearOrderDraft, loadOrderDraft, saveOrderDraft, type OrderDraft } from "./draft";
+import { parseOrderDetails } from "./order-details";
 import {
   CANCEL_CONFIRM_ID,
   encodeConfirmId,
@@ -98,7 +100,8 @@ const PAYMENT_BN: Record<string, string> = {
   refunded: "ফেরত দেওয়া হয়েছে",
 };
 
-const SLOT_LABEL: Record<string, string> = {
+/** Bengali label for a delivery slot — shared with the confirm handler. */
+export const SLOT_LABEL: Record<string, string> = {
   morning: "সকাল",
   afternoon: "দুপুর",
   evening: "বিকাল",
@@ -268,14 +271,245 @@ function orderSuggestionsReply(
   };
 }
 
+/* ---------------- multi-turn order collection ---------------- */
+
+/** Price + delivery charge for an open draft (mirrors the confirm handler). */
+function draftTotals(cake: Cake, draft: OrderDraft, settings: Settings): {
+  weight?: number;
+  subtotal: number;
+  deliveryCharge: number;
+  total: number;
+} {
+  const sizes = (cake.sizes ?? []).filter((s) => s.is_available);
+  const size = draft.weight != null ? sizes.find((s) => s.weight === draft.weight) : undefined;
+  const unitPrice = size?.price ?? cake.base_price;
+  const subtotal = unitPrice * draft.quantity;
+  const deliveryCharge =
+    settings.free_delivery_enabled && subtotal >= settings.free_delivery_min
+      ? 0
+      : settings.delivery_charge;
+  return { weight: size?.weight ?? draft.weight, subtotal, deliveryCharge, total: subtotal + deliveryCharge };
+}
+
+function chargeNote(deliveryCharge: number): string {
+  return deliveryCharge > 0
+    ? ` (ডেলিভারি চার্জ ৳${deliveryCharge}সহ)`
+    : " (ফ্রি ডেলিভারি)";
+}
+
+/** The draft's cake, or null when it left the catalog. */
+async function getDraftCake(draft: OrderDraft): Promise<Cake | null> {
+  const cake = await getStore().getCakeById(draft.cakeId);
+  return cake && cake.is_active ? cake : null;
+}
+
+/**
+ * "Details still missing" prompt. Never carries a confirm button — the
+ * customer only sees that once address, phone and date are all collected.
+ */
+export function missingDetailsReply(input: {
+  draft: OrderDraft;
+  cake: Cake;
+  settings: Settings;
+  hint?: string;
+}): AutoReply {
+  const { draft, cake, settings, hint } = input;
+  const { weight, deliveryCharge, total } = draftTotals(cake, draft, settings);
+
+  const lines = [
+    "*অর্ডার চালিয়ে যান*",
+    "",
+    `*কেক:* ${cake.name} ×${draft.quantity}`,
+    weight != null ? `*সাইজ:* ${weight} lb` : null,
+    `*মোট:* ${formatBDT(total)}${chargeNote(deliveryCharge)}`,
+    "",
+    draft.address
+      ? `✓ *ঠিকানা:* ${draft.address}`
+      : "✗ *ঠিকানা:* এখনো দেওয়া হয়নি",
+    draft.phone
+      ? `✓ *ফোন:* ${draft.phone}`
+      : "✗ *ফোন নম্বর:* এখনো দেওয়া হয়নি",
+    draft.deliveryDate
+      ? `✓ *তারিখ:* ${draft.deliveryDate}${
+          draft.slot ? ` · ${SLOT_LABEL[draft.slot] ?? draft.slot}` : ""
+        }`
+      : "✗ *তারিখ:* এখনো দেওয়া হয়নি",
+    ...(hint ? ["", hint] : []),
+    "",
+    "*এক মেসেজে জানান — ঠিকানা, ফোন ও তারিখ,*",
+    "যেমন: House 12, Road 3, Dhanmondi — 01712345678 — 7 Nov 2026 বিকাল",
+  ].filter((l): l is string => l != null);
+
+  const body = lines.join("\n");
+  return {
+    text: body,
+    fallbackText: body,
+    buttons: [{ id: CANCEL_CONFIRM_ID, title: "বাতিল করুন" }],
+  };
+}
+
+/**
+ * Final review with every collected detail — the only message that offers
+ * the confirm button. Shared with the confirm handler, which re-checks the
+ * draft before actually placing the order.
+ */
+export function reviewReply(input: {
+  draft: OrderDraft;
+  cake: Cake;
+  settings: Settings;
+}): AutoReply {
+  const { draft, cake, settings } = input;
+  if (!draft.address || !draft.phone || !draft.deliveryDate) {
+    return missingDetailsReply({ draft, cake, settings, hint: "সব তথ্য দিলেই অর্ডার কনফার্ম হবে।" });
+  }
+
+  const { weight, deliveryCharge, total } = draftTotals(cake, draft, settings);
+
+  const lines = [
+    "*অর্ডার যাচাই করুন*",
+    "",
+    `*কেক:* ${cake.name} ×${draft.quantity}`,
+    weight != null ? `*সাইজ:* ${weight} lb` : null,
+    `*অনুষ্ঠান:* ${OCCASION_BN[draft.occasion] ?? draft.occasion}`,
+    `*ডেলিভারি:* ${draft.deliveryDate}${
+      draft.slot ? ` · ${SLOT_LABEL[draft.slot] ?? draft.slot}` : ""
+    }`,
+    `*ঠিকানা:* ${draft.address}`,
+    `*ফোন:* ${draft.phone}`,
+    `*মোট:* ${formatBDT(total)}${chargeNote(deliveryCharge)}`,
+    "*পেমেন্ট:* ক্যাশ অন ডেলিভারি",
+    "",
+    "সব তথ্য ঠিক আছে নিশ্চিত করতে বাটনে চাপ দিন।",
+  ].filter((l): l is string => l != null);
+
+  const body = lines.join("\n");
+  return {
+    text: body,
+    fallbackText: body,
+    buttons: [
+      {
+        id: encodeConfirmId({
+          cakeId: draft.cakeId,
+          quantity: draft.quantity,
+          weight: draft.weight,
+          occasion: draft.occasion,
+          deliveryDate: draft.deliveryDate,
+          slot: draft.slot,
+        }),
+        title: "অর্ডার নিশ্চিত করুন",
+      },
+      { id: CANCEL_CONFIRM_ID, title: "বাতিল করুন" },
+    ],
+  };
+}
+
+/** Menu / greeting / courtesy messages that should leave the draft alone. */
+function isDraftExitCommand(lower: string): boolean {
+  if (lower === "1" || lower === "2" || lower === "3" || lower === "4") return true;
+  if (MENU_KEYWORDS.has(lower)) return true;
+  if (has(lower, GREETINGS)) return true;
+  if (has(lower, ["thanks", "thank you", "dhonnobad", "ধন্যবাদ", "ok", "okay"])) return true;
+  if (has(lower, ["status", "order status", "অর্ডার স্ট্যাটাস"])) return true;
+  if (has(lower, ["contact", "help", "support", "যোগাযোগ"])) return true;
+  if (has(lower, ["cakes", "cake", "menu", "কেক"])) return true;
+  if (has(lower, ["how to order", "order korbo", "অর্ডার করব"])) return true;
+  return false;
+}
+
+const DRAFT_CANCEL_WORDS = ["cancel", "abort", "বাতিল"];
+
+/**
+ * Continue an open order draft: merge whatever the customer supplied into
+ * it and answer with either the final review (all details present → confirm
+ * button) or another "details missing" prompt (cancel button only).
+ *
+ * Returns null when there is no draft or the message is a menu command, so
+ * the normal reply chain keeps handling it.
+ */
+async function continueOrderDraft(input: {
+  raw: string;
+  lower: string;
+  from: string;
+  settings: Settings;
+}): Promise<AutoReply | null> {
+  const { raw, lower, from, settings } = input;
+  const draft = await loadOrderDraft(from);
+  if (!draft) return null;
+
+  if (has(lower, DRAFT_CANCEL_WORDS) || lower === "না") {
+    await clearOrderDraft(from);
+    return {
+      text: "ঠিক আছে, অর্ডারটি বাতিল করা হয়েছে। পরে আবার চাইলে কেকের নাম লিখে অর্ডার করতে পারবেন।",
+    };
+  }
+
+  // Menu / greeting / courtesy text is not order details — let the normal
+  // chain answer it and keep the draft open for later.
+  if (isDraftExitCommand(lower)) return null;
+
+  const parsed = parseOrderDetails(raw);
+  const nothingParsed =
+    !parsed.address && !parsed.phone && !parsed.deliveryDate && !parsed.slot;
+
+  const today = dhakaDatePlus(0);
+  const merged: OrderDraft = { ...draft, updatedAt: new Date().toISOString() };
+  let hint: string | undefined;
+
+  if (!nothingParsed) {
+    if (parsed.address) merged.address = parsed.address;
+    if (parsed.phone) merged.phone = parsed.phone;
+    if (parsed.slot) merged.slot = parsed.slot;
+    if (parsed.deliveryDate) {
+      if (parsed.deliveryDate < today) {
+        hint = `তারিখটি অতীতে পড়ছে (${parsed.deliveryDate})। আজ বা পরের তারিখ দিন।`;
+      } else {
+        merged.deliveryDate = parsed.deliveryDate;
+      }
+    }
+    if (merged.deliveryDate && merged.deliveryDate < today) {
+      // The date expired while we were waiting — never confirm a past date.
+      merged.deliveryDate = undefined;
+      hint = "অর্ডারের তারিখটি এখন অতীতে গেছে। নতুন তারিখ দিন।";
+    }
+    await saveOrderDraft(from, merged);
+  }
+
+  const cake = await getDraftCake(merged);
+  if (!cake) {
+    await clearOrderDraft(from);
+    return {
+      text: `দুঃখিত, এই কেকটি আর পাওয়া যায়নি। অন্য কেক দেখুন: ${SITE.url}/cakes`,
+    };
+  }
+
+  if (nothingParsed) {
+    return missingDetailsReply({
+      draft: merged,
+      cake,
+      settings,
+      hint: "ঠিকানা, ফোন নম্বর ও তারিখ সহ একটি মেসেজ পাঠান।",
+    });
+  }
+
+  if (merged.address && merged.phone && merged.deliveryDate) {
+    return reviewReply({ draft: merged, cake, settings });
+  }
+  return missingDetailsReply({ draft: merged, cake, settings, hint });
+}
+
 /* ---------------- free-text order request ---------------- */
 
 /**
- * `order <cake> <qty> <occasion> <size> <date>` → a review prompt with
- * confirm / cancel buttons. Nothing is written to the store until the
- * customer taps confirm (handled by `whatsapp/order.ts`).
+ * `order <cake> <qty> <occasion> <size> <date>` → open a draft and ask for
+ * the delivery details. Nothing is written to the store until the customer
+ * has supplied address, phone and date and tapped confirm (handled by
+ * `whatsapp/order.ts`).
  */
-async function buildOrderRequestReply(rest: string, settings: Settings): Promise<AutoReply> {
+async function buildOrderRequestReply(
+  rest: string,
+  settings: Settings,
+  from: string,
+): Promise<AutoReply> {
   const store = getStore();
   const req = parseOrderRequest(rest);
 
@@ -312,51 +546,51 @@ async function buildOrderRequestReply(rest: string, settings: Settings): Promise
     return { text: `তারিখটি অতীতে পড়ছে (${req.deliveryDate})। আজ বা পরের তারিখ দিন।` };
   }
 
-  const unitPrice = size?.price ?? cake.base_price;
-  const weight = size?.weight;
   const quantity = req.quantity;
-  const deliveryDate = req.deliveryDate ?? dhakaDatePlus(MIN_DELIVERY_LEAD_DAYS);
-  const subtotal = unitPrice * quantity;
-  const deliveryCharge =
-    settings.free_delivery_enabled && subtotal >= settings.free_delivery_min
-      ? 0
-      : settings.delivery_charge;
-  const total = subtotal + deliveryCharge;
+  const draft: OrderDraft = {
+    cakeId: cake.id,
+    quantity,
+    weight: size?.weight ?? req.weight,
+    occasion: req.occasion,
+    deliveryDate: req.deliveryDate,
+    slot: req.slot,
+    updatedAt: new Date().toISOString(),
+  };
+  await saveOrderDraft(from, draft);
+
+  const { deliveryCharge, total } = draftTotals(cake, draft, settings);
 
   const lines = [
-    "*অর্ডার যাচাই করুন*",
+    "*অর্ডার শুরু হয়েছে*",
     "",
     `*কেক:* ${cake.name}`,
     `*পরিমাণ:* ${quantity}টি`,
-    weight != null ? `*সাইজ:* ${weight} lb` : null,
+    size?.weight != null ? `*সাইজ:* ${size.weight} lb` : null,
     `*অনুষ্ঠান:* ${OCCASION_BN[req.occasion] ?? req.occasion}`,
-    `*ডেলিভারি:* ${deliveryDate}${req.slot ? ` · ${SLOT_LABEL[req.slot] ?? req.slot}` : ""}`,
-    `*মোট:* ${formatBDT(total)}${
-      deliveryCharge > 0 ? ` (ডেলিভারি চার্জ ৳${deliveryCharge}সহ)` : " (ফ্রি ডেলিভারি)"
-    }`,
+    `*মোট:* ${formatBDT(total)}${chargeNote(deliveryCharge)}`,
     "*পেমেন্ট:* ক্যাশ অন ডেলিভারি",
     "",
-    "নিশ্চিত করতে বাটনে চাপ দিন।",
+    req.deliveryDate
+      ? `*তারিখ দেওয়া আছে:* ${req.deliveryDate}${
+          req.slot ? ` · ${SLOT_LABEL[req.slot] ?? req.slot}` : ""
+        }`
+      : null,
+    "*অর্ডার কনফার্ম করতে জানান:*",
+    req.deliveryDate
+      ? "১. ডেলিভারি ঠিকানা\n২. ফোন নম্বর"
+      : "১. ডেলিভারি ঠিকানা\n২. ফোন নম্বর\n৩. তারিখ ও সময়",
+    "",
+    "*এক মেসেজে উদাহরণ:*",
+    "House 12, Road 3, Dhanmondi — 01712345678 — 7 Nov 2026 বিকাল",
+    "",
+    "তথ্য পাওয়া গেলে অর্ডার যাচাইয়ের বাটন পাবেন।",
   ].filter((l): l is string => l != null);
 
   const body = lines.join("\n");
   return {
     text: body,
     fallbackText: body,
-    buttons: [
-      {
-        id: encodeConfirmId({
-          cakeId: cake.id,
-          quantity,
-          weight,
-          occasion: req.occasion,
-          deliveryDate,
-          slot: req.slot,
-        }),
-        title: "অর্ডার নিশ্চিত করুন",
-      },
-      { id: CANCEL_CONFIRM_ID, title: "বাতিল করুন" },
-    ],
+    buttons: [{ id: CANCEL_CONFIRM_ID, title: "বাতিল করুন" }],
   };
 }
 
@@ -399,6 +633,15 @@ export async function buildAutoReply({ text, from }: AutoReplyInput): Promise<Au
         );
       }
       return plain(orderReply(order, settings));
+    }
+
+    /* ---------- an open order draft is waiting for details ---------- */
+    // A fresh "order …" restarts the flow instead of feeding the parser,
+    // so it is excluded here (and handled — with the old draft dropped —
+    // at the order-request branch further down).
+    if (!splitOrderRequest(raw)) {
+      const draftReply = await continueOrderDraft({ raw, lower, from, settings });
+      if (draftReply) return draftReply;
     }
 
     /* ---------- phone number lookup ---------- */
@@ -454,7 +697,9 @@ export async function buildAutoReply({ text, from }: AutoReplyInput): Promise<Au
     /* ---------- free-text order request: "order <cake> <qty> …" ---------- */
     const orderRest = splitOrderRequest(raw);
     if (orderRest !== null) {
-      return await buildOrderRequestReply(orderRest, settings);
+      // A fresh request supersedes any draft still collecting details.
+      await clearOrderDraft(from);
+      return await buildOrderRequestReply(orderRest, settings, from);
     }
 
     /* ---------- cake-name lookup → details ---------- */
@@ -489,7 +734,7 @@ export async function buildAutoReply({ text, from }: AutoReplyInput): Promise<Au
           "• order Chocolate Truffle 2 birthday",
           "• অর্ডার চকলেট ট্রাফল ২টি জন্মদিন",
           "",
-          "এরপর আমরা মূল্যসহ বিস্তারিত দেখিয়ে অর্ডারটি কনফার্ম করে দেব।",
+          "এরপর ঠিকানা, ফোন নম্বর ও তারিখ জানালে অর্ডার কনফার্ম করতে পারবেন।",
         ].join("\n"),
         fallbackText: menuFallback(settings.store_name),
         buttons: MENU_BUTTONS,

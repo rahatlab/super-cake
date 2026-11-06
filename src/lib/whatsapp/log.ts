@@ -128,6 +128,8 @@ export async function listWhatsAppLogs(query: WhatsAppLogQuery = {}): Promise<Wh
     let builder = db
       .from("whatsapp_messages")
       .select("*")
+      // Order drafts are internal state, not outbound messages.
+      .neq("type", "order_draft")
       .order("created_at", { ascending: false })
       .limit(Math.min(Math.max(query.limit ?? 100, 1), 500));
     if (query.status) builder = builder.eq("status", query.status);
