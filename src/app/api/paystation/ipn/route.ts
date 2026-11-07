@@ -1,5 +1,5 @@
 import { NextResponse, after } from "next/server";
-import { settlePayStationOrder } from "@/lib/paystation";
+import { isSuccessfulTrxStatus, settlePayStationOrder } from "@/lib/paystation";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
@@ -41,8 +41,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ status: "missing_invoice" }, { status: 422 });
   }
 
-  const trxStatus = String(body?.trx_status ?? "").toLowerCase();
-  if (trxStatus !== "success") {
+  // The gateway's spelling varies (`Success` in the docs, `successful` from
+  // the API) — accept any known success alias, settle() re-verifies anyway.
+  const trxStatus = String(body?.trx_status ?? "").trim();
+  if (!isSuccessfulTrxStatus(trxStatus)) {
     // IPN only fires for successes — anything else is logged and acknowledged.
     console.warn("[paystation] IPN with unexpected status:", trxStatus, invoice);
     return NextResponse.json({ status: "ignored" });

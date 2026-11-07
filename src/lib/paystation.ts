@@ -127,6 +127,37 @@ export interface StatusResult {
   error?: string;
 }
 
+/**
+ * The docs promise `processing | success | failed | refund`, but the API
+ * actually answers `successful` for a completed payment and the IPN has been
+ * documented as `Success`. Map every known spelling onto the canonical four —
+ * otherwise a paid order silently fails to settle.
+ */
+const TRX_STATUS_ALIASES: Record<string, TrxStatus> = {
+  processing: "processing",
+  pending: "processing",
+  initiated: "processing",
+  success: "success",
+  successful: "success",
+  complete: "success",
+  completed: "success",
+  paid: "success",
+  failed: "failed",
+  failure: "failed",
+  refund: "refund",
+  refunded: "refund",
+};
+
+/** Canonical status for any gateway spelling; undefined = value we don't know. */
+export function normalizeTrxStatus(value: unknown): TrxStatus | undefined {
+  return TRX_STATUS_ALIASES[String(value ?? "").trim().toLowerCase()];
+}
+
+/** True only for an explicitly successful transaction (never for unknowns). */
+export function isSuccessfulTrxStatus(value: unknown): boolean {
+  return normalizeTrxStatus(value) === "success";
+}
+
 export async function getPayStationStatus(invoiceNumber: string): Promise<StatusResult> {
   const creds = credentials();
   if (!creds) return { ok: false, error: "not_configured" };
@@ -161,10 +192,12 @@ export async function getPayStationStatus(invoiceNumber: string): Promise<Status
       return { ok: false, error: `${json.status_code ?? res.status} ${json.message ?? ""}`.trim() };
     }
 
-    const rawStatus = String(json.data.trx_status ?? "").toLowerCase();
-    const status = (["processing", "success", "failed", "refund"] as const).find(
-      (s) => s === rawStatus,
-    );
+    const rawStatus = String(json.data.trx_status ?? "").trim();
+    const status = normalizeTrxStatus(rawStatus);
+    if (!status) {
+      // Unknown spelling: fail closed (never mark paid) but leave a trace.
+      console.warn("[paystation] unknown trx_status", JSON.stringify(rawStatus), invoiceNumber);
+    }
     const amountRaw = json.data.payment_amount ?? json.data.trx_amount;
     const amount = amountRaw != null && amountRaw !== "" ? Number(amountRaw) : undefined;
 
