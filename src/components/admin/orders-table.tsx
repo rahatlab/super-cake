@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ClipboardList, Search } from "lucide-react";
-import { OCCASIONS, ORDER_STATUS_META } from "@/lib/constants";
+import { OCCASIONS, ORDER_STATUS_META, PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { cn, formatBDT, formatDateTime } from "@/lib/utils";
 import { Pagination } from "@/components/pagination";
 import type { Occasion, Order, OrderStatus, PaymentStatus } from "@/lib/types";
@@ -189,7 +189,9 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                     </td>
                     <td className="px-4 py-3 font-bold">{formatBDT(o.total)}</td>
                     <td className="px-4 py-3">
-                      <span className="badge uppercase bg-line/50 text-muted">{o.payment_method}</span>{" "}
+                      <span className="badge uppercase bg-line/50 text-muted">
+                        {PAYMENT_METHOD_LABEL[o.payment_method] ?? o.payment_method}
+                      </span>{" "}
                       <span className={cn("badge", PAYMENT_BADGE[o.order_status === "completed" && o.payment_method === "cod" ? "paid" : o.payment_status])}>
                         {o.order_status === "completed" && o.payment_method === "cod" ? "paid" : o.payment_status.replace("_", " ")}
                       </span>

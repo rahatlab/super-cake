@@ -59,12 +59,14 @@ export function CustomOrderForm({
   idempotencyKey,
   minDeliveryDate,
   defaultDeliveryDate,
+  paystationEnabled,
 }: {
   settings: Settings;
   cake: CakeLike;
   idempotencyKey: string;
   minDeliveryDate: string;
   defaultDeliveryDate: string;
+  paystationEnabled: boolean;
 }) {
   const [state, formAction, pending] = useActionState(placeOrderAction, initialState);
 
@@ -80,8 +82,8 @@ export function CustomOrderForm({
   const [refUrl, setRefUrl] = useState("");
   const [deliveryDate, setDeliveryDate] = useState(defaultDeliveryDate);
   const [budget, setBudget] = useState<number | null>(null);
-  const [payment, setPayment] = useState<"cod" | "bkash">(
-    settings.cod_enabled ? "cod" : "bkash",
+  const [payment, setPayment] = useState<"cod" | "bkash" | "paystation">(
+    settings.cod_enabled ? "cod" : settings.bkash_enabled ? "bkash" : "paystation",
   );
   const [reminderOptIn, setReminderOptIn] = useState(false);
 
@@ -622,6 +624,20 @@ export function CustomOrderForm({
                 <input type="radio" name="payment_ui" checked={payment === "bkash"} onChange={() => setPayment("bkash")} className="sr-only" />
                 <span className="text-xl">📱</span>
                 <p className="mt-1.5 text-sm font-extrabold">bKash (Send Money)</p>
+              </label>
+            )}
+
+            {paystationEnabled && (
+              <label
+                className="cursor-pointer rounded-2xl border-2 bg-surface p-4"
+                style={{
+                  borderColor: payment === "paystation" ? "hsl(var(--brand))" : "hsl(var(--border))",
+                  background: payment === "paystation" ? "hsl(var(--brand) / 0.08)" : undefined,
+                }}
+              >
+                <input type="radio" name="payment_ui" checked={payment === "paystation"} onChange={() => setPayment("paystation")} className="sr-only" />
+                <span className="text-xl">💳</span>
+                <p className="mt-1.5 text-sm font-extrabold">কার্ড / মোবাইল ওয়ালেট</p>
               </label>
             )}
           </div>

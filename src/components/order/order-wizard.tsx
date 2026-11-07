@@ -70,11 +70,13 @@ export function OrderWizard({
   idempotencyKey,
   minDeliveryDate,
   defaultDeliveryDate,
+  paystationEnabled,
 }: {
   settings: Settings;
   idempotencyKey: string;
   minDeliveryDate: string;
   defaultDeliveryDate: string;
+  paystationEnabled: boolean;
 }) {
   const { items, subtotal, setQty, remove } = useCart();
   const formRef = useRef<HTMLFormElement>(null);
@@ -98,8 +100,8 @@ export function OrderWizard({
   const [referralInput, setReferralInput] = useState("");
   const [referral, setReferral] = useState<ReferralState | null>(null);
   const [referralLoading, setReferralLoading] = useState(false);
-  const [payment, setPayment] = useState<"cod" | "bkash">(
-    settings.cod_enabled ? "cod" : "bkash",
+  const [payment, setPayment] = useState<"cod" | "bkash" | "paystation">(
+    settings.cod_enabled ? "cod" : settings.bkash_enabled ? "bkash" : "paystation",
   );
   const [reminderOptIn, setReminderOptIn] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
@@ -806,9 +808,31 @@ export function OrderWizard({
                     <p className="text-xs text-muted">TrxID সাবমিট করুন</p>
                   </label>
                 )}
+
+                {paystationEnabled && (
+                  <label
+                    className="cursor-pointer rounded-2xl border-2 bg-surface p-4 transition-colors"
+                    style={{
+                      borderColor: payment === "paystation" ? "hsl(var(--brand))" : "hsl(var(--border))",
+                      background: payment === "paystation" ? "hsl(var(--brand) / 0.08)" : undefined,
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="payment_method_ui"
+                      value="paystation"
+                      checked={payment === "paystation"}
+                      onChange={() => setPayment("paystation")}
+                      className="sr-only"
+                    />
+                    <span className="text-xl">💳</span>
+                    <p className="mt-1.5 text-sm font-extrabold">কার্ড / মোবাইল ওয়ালেট</p>
+                    <p className="text-xs text-muted">bKash · Nagad · Rocket · Visa — PayStation দিয়ে</p>
+                  </label>
+                )}
               </div>
 
-              {!settings.cod_enabled && !settings.bkash_enabled && (
+              {!settings.cod_enabled && !settings.bkash_enabled && !paystationEnabled && (
                 <p className="rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
                   পেমেন্ট অপশন এখন বন্ধ আছে। অনুগ্রহ করে WhatsApp এ যোগাযোগ করুন।
                 </p>

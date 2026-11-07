@@ -243,6 +243,7 @@ const PAYMENT_BN: Record<string, string> = {
 const PAYMENT_METHOD_BN: Record<string, string> = {
   cod: "ক্যাশ অন ডেলিভারি",
   bkash: "bKash",
+  paystation: "PayStation (কার্ড/ওয়ালেট)",
 };
 
 const SLOT_BN: Record<string, string> = {

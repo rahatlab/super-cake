@@ -15,6 +15,13 @@ export const SITE = {
   locale: "bn_BD",
 };
 
+/** Human-readable payment method labels (dashboard, tracking, receipts). */
+export const PAYMENT_METHOD_LABEL: Record<string, string> = {
+  cod: "Cash on Delivery",
+  bkash: "bKash",
+  paystation: "PayStation (কার্ড/ওয়ালেট)",
+};
+
 export const OCCASIONS: { value: Occasion; label: string; bn: string; emoji: string; hint: string }[] = [
   { value: "birthday", label: "Birthday", bn: "জন্মদিন", emoji: "🎂", hint: "Happy Birthday cakes" },
   { value: "anniversary", label: "Anniversary", bn: "বিবাহ বার্ষিকী", emoji: "💍", hint: "Romantic anniversary cakes" },

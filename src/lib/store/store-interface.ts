@@ -7,6 +7,7 @@ import type {
   Order,
   OrderStatusHistory,
   Payment,
+  PaymentMethod,
   Profile,
   PromoCode,
   Referral,
@@ -187,6 +188,13 @@ export interface Store {
   /* payments */
   listPayments(opts?: { orderId?: string; trxId?: string }): Promise<Payment[]>;
   updatePayment(id: string, patch: Partial<Payment>): Promise<Payment>;
+  createPayment(input: {
+    order_id: string;
+    method: PaymentMethod;
+    amount: number;
+    trx_id?: string | null;
+    status: Payment["status"];
+  }): Promise<Payment>;
 
   /* promos */
   listPromos(): Promise<PromoCode[]>;

@@ -18,6 +18,7 @@ import type {
   EmailVerification,
 } from "@/lib/types";
 import { uid, slugBase, pickUniqueSlug, generateOrderNo, phoneKey } from "@/lib/utils";
+import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import type {
   CreateOrderInput,
   StockLine,
@@ -196,10 +197,8 @@ function dashboardStats(db: DB): DashboardStats {
 
   for (const o of active) {
     occasionMap.set(o.occasion, (occasionMap.get(o.occasion) ?? 0) + 1);
-    paymentMap.set(
-      o.payment_method === "cod" ? "Cash on Delivery" : "bKash",
-      (paymentMap.get(o.payment_method === "cod" ? "Cash on Delivery" : "bKash") ?? 0) + 1,
-    );
+    const pm = PAYMENT_METHOD_LABEL[o.payment_method] ?? o.payment_method;
+    paymentMap.set(pm, (paymentMap.get(pm) ?? 0) + 1);
   }
 
   for (const o of realized) {
@@ -812,6 +811,21 @@ export const localStore: Store = {
       if (i < 0) throw new Error("Payment not found");
       db.payments[i] = { ...db.payments[i], ...patch };
       return db.payments[i];
+    });
+  },
+  async createPayment(input) {
+    return tx((db) => {
+      const row: Payment = {
+        id: uid("pay"),
+        order_id: input.order_id,
+        method: input.method,
+        amount: input.amount,
+        trx_id: input.trx_id ?? null,
+        status: input.status,
+        created_at: new Date().toISOString(),
+      };
+      db.payments.unshift(row);
+      return row;
     });
   },
 

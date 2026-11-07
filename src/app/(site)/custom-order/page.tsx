@@ -7,6 +7,7 @@ import { breadcrumbLd, ldJson } from "@/lib/seo";
 import { MIN_DELIVERY_LEAD_DAYS } from "@/lib/constants";
 import { dhakaDatePlus } from "@/lib/utils";
 import { CustomOrderForm } from "@/components/order/custom-order-form";
+import { payStationConfigured } from "@/lib/paystation";
 
 export const metadata: Metadata = {
   title: "Custom Cake Order",
@@ -61,6 +62,7 @@ export default async function CustomOrderPage() {
         idempotencyKey={randomUUID()}
         minDeliveryDate={dhakaDatePlus(MIN_DELIVERY_LEAD_DAYS)}
         defaultDeliveryDate={dhakaDatePlus(MIN_DELIVERY_LEAD_DAYS)}
+        paystationEnabled={payStationConfigured()}
         cake={{
           id: customCake.id,
           name: customCake.name,

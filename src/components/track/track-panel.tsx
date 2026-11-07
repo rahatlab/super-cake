@@ -5,7 +5,7 @@ import { useActionState, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Check, Loader2, MapPin, MessageCircle, Phone, Radio, Search, Star } from "lucide-react";
 import type { Order, OrderStatusHistory } from "@/lib/types";
-import { ORDER_STATUS_FLOW, ORDER_STATUS_META } from "@/lib/constants";
+import { ORDER_STATUS_FLOW, ORDER_STATUS_META, PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { formatBDT, formatDateTime, waLink } from "@/lib/utils";
 import { trackOrderAction, type TrackResult } from "@/lib/actions/order";
 import { useOrderLive } from "@/components/track/use-order-live";
@@ -162,7 +162,7 @@ export function TrackPanel({
                     {formatBDT(viewOrder.total)}
                   </p>
                   <p className="text-[11px] text-muted">
-                    {viewOrder.payment_method === "cod" ? "Cash on Delivery" : "bKash"} ·{" "}
+                    {PAYMENT_METHOD_LABEL[viewOrder.payment_method] ?? viewOrder.payment_method} ·{" "}
                     {viewOrder.payment_status === "paid"
                       ? "Paid ✅"
                       : viewOrder.payment_status === "pending_verify"

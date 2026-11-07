@@ -6,6 +6,7 @@ import { OrderWizard } from "@/components/order/order-wizard";
 import { breadcrumbLd, ldJson } from "@/lib/seo";
 import { MIN_DELIVERY_LEAD_DAYS } from "@/lib/constants";
 import { dhakaDatePlus } from "@/lib/utils";
+import { payStationConfigured } from "@/lib/paystation";
 
 export const metadata: Metadata = {
   title: "অর্ডার করুন",
@@ -57,6 +58,7 @@ export default async function OrderPage() {
         idempotencyKey={randomUUID()}
         minDeliveryDate={dhakaDatePlus(MIN_DELIVERY_LEAD_DAYS)}
         defaultDeliveryDate={dhakaDatePlus(MIN_DELIVERY_LEAD_DAYS)}
+        paystationEnabled={payStationConfigured()}
       />
     </div>
   );

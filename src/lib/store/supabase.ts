@@ -17,6 +17,7 @@ import type {
   EmailVerification,
 } from "@/lib/types";
 import { generateOrderNo, ORDER_NO_RE, phoneKey, slugBase, pickUniqueSlug } from "@/lib/utils";
+import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { SEED_SETTINGS } from "./seed";
 import type {
   CreateOrderInput,
@@ -133,7 +134,7 @@ async function dashboardStats(): Promise<DashboardStats> {
 
   for (const o of active) {
     occasionMap.set(o.occasion, (occasionMap.get(o.occasion) ?? 0) + 1);
-    const pm = o.payment_method === "cod" ? "Cash on Delivery" : "bKash";
+    const pm = PAYMENT_METHOD_LABEL[o.payment_method] ?? o.payment_method;
     paymentMap.set(pm, (paymentMap.get(pm) ?? 0) + 1);
   }
 
@@ -813,6 +814,25 @@ export const supabaseStore: Store = {
     const { error } = await db().from("payments").update(patch).eq("id", id);
     if (error) err(error);
     const { data } = await db().from("payments").select("*").eq("id", id).maybeSingle();
+    return data as Payment;
+  },
+  async createPayment(input) {
+    const { data, error } = await db()
+      .from("payments")
+      .insert({
+        order_id: input.order_id,
+        method: input.method,
+        amount: input.amount,
+        trx_id: input.trx_id ?? null,
+        status: input.status,
+        created_at: new Date().toISOString(),
+      })
+      .select("*")
+      .single();
+    if (error) {
+      if (error.code === "23505") throw new Error("এই TrxID আগে ব্যবহার করা হয়েছে।");
+      err(error);
+    }
     return data as Payment;
   },
 

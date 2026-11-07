@@ -11,6 +11,7 @@ import { customExtras } from "@/lib/custom-design";
 import { buildBreakdown, evaluatePromo, evaluateReferral, referralDiscount } from "@/lib/pricing";
 import type { Order, OrderStatusHistory, Review } from "@/lib/types";
 import { notifyAdminNewOrder, notifyOrderConfirmation } from "@/lib/whatsapp";
+import { initiatePayStation, payStationConfigured } from "@/lib/paystation";
 import { markCartConverted } from "@/lib/whatsapp/cart";
 import { isCloudinaryConfigured, MAX_REVIEW_PHOTOS, uploadReviewPhotos } from "@/lib/cloudinary";
 import { storeImages } from "@/lib/upload";
@@ -55,6 +56,25 @@ async function rollbackOrder(order: Order, stockLines: StockLine[]) {
   } catch (e) {
     console.error("[order] rollback failed", (e as Error).message);
   }
+}
+
+/** Start PayStation hosted checkout for an order (order_no = invoice number). */
+async function startPayStationCheckout(
+  order: Order,
+): Promise<{ url: string } | { error: string }> {
+  const result = await initiatePayStation({
+    invoice_number: order.order_no,
+    payment_amount: order.total,
+    cust_name: order.customer_name,
+    cust_phone: order.phone,
+    // PayStation requires an email even when checkout left it optional.
+    cust_email: order.email?.trim() || "guest@supercake.com",
+    cust_address: order.address,
+    checkout_items: order.items.map((i) => `${i.name} ×${i.quantity}`).join(", ") || undefined,
+  });
+  if (result.ok) return { url: result.payment_url };
+  console.error("[order] paystation initiate failed:", order.order_no, result.error);
+  return { error: result.error };
 }
 
 /**
@@ -118,11 +138,25 @@ export async function placeOrderAction(
   if (input.payment_method === "bkash" && !settings.bkash_enabled) {
     return { error: "bKash পেমেন্ট এখন বন্ধ আছে।", field: "payment_method" };
   }
+  if (input.payment_method === "paystation" && !payStationConfigured()) {
+    return { error: "PayStation পেমেন্ট এখন চালু নেই।", field: "payment_method" };
+  }
 
   const idempotencyKey = normalizeIdempotencyKey(formData.get("idempotency_key"));
   if (idempotencyKey) {
     const existing = await store.findOrderByIdempotencyKey(idempotencyKey);
     if (existing) {
+      // A PayStation order that never reached the gateway gets a fresh checkout
+      // link (PayStation answers 1008 if this invoice was already initiated —
+      // then we just fall back to the success page).
+      if (
+        existing.payment_method === "paystation" &&
+        existing.payment_status !== "paid" &&
+        existing.order_status !== "cancelled"
+      ) {
+        const retry = await startPayStationCheckout(existing);
+        if ("url" in retry) redirect(retry.url);
+      }
       redirect(
         `/order/success?${new URLSearchParams({
           no: existing.order_no,
@@ -284,6 +318,19 @@ export async function placeOrderAction(
     }
   }
 
+  /* ---- PayStation: send the customer to hosted checkout before notifying ---- */
+  let payStationUrl: string | undefined;
+  if (input.payment_method === "paystation") {
+    const started = await startPayStationCheckout(order);
+    if ("error" in started) {
+      // Order never went to the gateway — unwind it fully so the customer can
+      // simply retry (the idempotency key is cleared by rollbackOrder).
+      await rollbackOrder(order, stockLines);
+      return { error: `PayStation পেমেন্ট শুরু করা যায়নি: ${started.error}`, field: "payment_method" };
+    }
+    payStationUrl = started.url;
+  }
+
   /* ---- notifications (after response; never block checkout) ---- */
   after(async () => {
     await Promise.allSettled([
@@ -292,6 +339,8 @@ export async function placeOrderAction(
       markCartConverted(order.phone, order.id),
     ]);
   });
+
+  if (payStationUrl) redirect(payStationUrl);
 
   redirect(
     `/order/success?${new URLSearchParams({

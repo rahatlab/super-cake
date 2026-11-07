@@ -11,7 +11,7 @@ export type OrderStatus =
   | "completed"
   | "cancelled";
 
-export type PaymentMethod = "cod" | "bkash";
+export type PaymentMethod = "cod" | "bkash" | "paystation";
 export type PaymentStatus = "unpaid" | "pending_verify" | "paid" | "refunded";
 
 export interface Profile {

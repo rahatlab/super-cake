@@ -11,7 +11,7 @@ import {
   User,
 } from "lucide-react";
 import { getStore } from "@/lib/store";
-import { OCCASIONS, ORDER_STATUS_META } from "@/lib/constants";
+import { OCCASIONS, ORDER_STATUS_META, PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { formatBDT, formatDateTime, waLink, weightLabel } from "@/lib/utils";
 import { StatusControls } from "@/components/admin/status-controls";
 import { PaymentActions } from "@/components/admin/payment-actions";
@@ -282,7 +282,7 @@ export default async function AdminOrderDetailPage({
               <div className="flex items-center justify-between gap-3">
                 <dt className="text-muted">মেথড</dt>
                 <dd className="font-semibold">
-                  {order.payment_method === "cod" ? "Cash on Delivery" : "bKash"}
+                  {PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}
                 </dd>
               </div>
               <div className="flex items-center justify-between gap-3">

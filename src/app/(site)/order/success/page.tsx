@@ -5,7 +5,7 @@ import { getStore } from "@/lib/store";
 import { getCachedSettings } from "@/lib/store/cache";
 import { notFound } from "next/navigation";
 import { formatBDT, waLink } from "@/lib/utils";
-import { ORDER_STATUS_META } from "@/lib/constants";
+import { ORDER_STATUS_META, PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { getCurrentUser, verifyOrderAccessToken, createReviewAccessToken } from "@/lib/auth";
 import { SuccessAnimation } from "@/components/order/success-animation";
 import { ClearCartOnMount } from "@/components/order/clear-cart";
@@ -139,9 +139,12 @@ export default async function OrderSuccessPage({
             </div>
             <p className="pt-1 text-xs text-muted">
               পেমেন্ট:{" "}
-              <strong>{order.payment_method === "cod" ? "Cash on Delivery" : "bKash"}</strong>
+              <strong>{PAYMENT_METHOD_LABEL[order.payment_method] ?? order.payment_method}</strong>
               {order.payment_method === "bkash" && order.payment_status === "pending_verify" && (
                 <span className="text-warning"> · TrxID ভেরিফাই হচ্ছে</span>
+              )}
+              {order.payment_method === "paystation" && order.payment_status !== "paid" && (
+                <span className="text-warning"> · পেমেন্ট সম্পন্ন হয়নি</span>
               )}
             </p>
           </div>

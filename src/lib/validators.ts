@@ -99,7 +99,7 @@ export const checkoutSchema = z
     delivery_slot: deliverySlotSchema,
     promo_code: z.string().trim().max(30).optional().nullable(),
     referral_code: z.string().trim().max(30).optional().nullable(),
-    payment_method: z.enum(["cod", "bkash"]),
+    payment_method: z.enum(["cod", "bkash", "paystation"]),
     bkash_trx_id: z.string().trim().max(40).optional().nullable(),
     note: z.string().trim().max(300).optional(),
     /** client-calculated totals — always re-validated server side */

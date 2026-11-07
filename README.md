@@ -101,6 +101,8 @@ The app ships with **two interchangeable stores behind one interface**
       the admin message log
    7. `supabase/profile-milestones.sql` — birthday/anniversary columns for the
       auto-wish cron (safe to re-run)
+   8. `supabase/paystation.sql` — allows `paystation` as an order/payment method
+      (PayStation gateway; safe to re-run)
 
    > `phase-fixes.sql` creates unique indexes on `lower(email)` and the last 10
    > digits of `profiles.phone`. If the project already has duplicate
@@ -235,6 +237,35 @@ its send (never retried), while a missed cart reminder simply retries tomorrow.
 
 ---
 
+## 💳 PayStation payments (sandbox testing)
+
+Hosted checkout via [PayStation](https://www.paystation.com.bd) — card, bKash, Nagad,
+Rocket, Upay and bank channels on one page. Enabled only when both credentials are set:
+
+```env
+PAYSTATION_MERCHANT_ID=104-1653730183   # sandbox merchant id
+PAYSTATION_PASSWORD=...
+PAYSTATION_BASE_URL=https://sandbox.paystation.com.bd   # live: https://api.paystation.com.bd
+```
+
+Also run `supabase/paystation.sql` once (see the migration list above).
+
+How it works:
+
+1. Checkout → `placeOrderAction` creates the order (`order_no` = invoice number) and
+   POSTs to PayStation's `/initiate-payment`, then redirects the browser to `payment_url`.
+2. PayStation sends the customer back to `/payment/callback`, which re-verifies the
+   invoice through `/transaction-status` (status **and** amount) before marking the order
+   `paid` and writing the `payments` row.
+3. The server-to-server IPN (`POST /api/paystation/ipn`) does the same verification in the
+   background — the IPN payload itself is never trusted, and settlement is idempotent so
+   retries never double-mark an order.
+
+Failed initiate rolls the whole order back (stock, promo/referral, idempotency key), so
+the customer can simply retry.
+
+---
+
 ## ⚙️ Environment variables
 
 | Variable | Required | Purpose |
@@ -250,6 +281,7 @@ its send (never retried), while a missed cart reminder simply retries tomorrow.
 | `WHATSAPP_TEMPLATES_ENABLED` / `WHATSAPP_TEMPLATE_LANG` | optional | Template sending (enable after approval) |
 | `WHATSAPP_CATALOG_ID` / `WHATSAPP_CATALOG_CATEGORY` / `WHATSAPP_CATALOG_CURRENCY` | optional | Meta catalog sync + catalog orders (`WHATSAPP_CATALOG_ID` required for those two) |
 | `WHATSAPP_AUTOMATION_ENABLED` | optional | Master switch for automatic sends |
+| `PAYSTATION_MERCHANT_ID` / `PAYSTATION_PASSWORD` / `PAYSTATION_BASE_URL` | optional | Enable the PayStation gateway (omit to hide the option at checkout) |
 | `CRON_SECRET` | optional | Bearer token for the abandoned-cart cron |
 
 ---
