@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { LayoutDashboard, Login01, Menu01, ShoppingBag01 } from "@animateicons/react/huge";
 import { X } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { useCart } from "@/components/cart/cart-context";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
@@ -208,7 +209,7 @@ export function Header() {
                     href={n.href}
                     onClick={() => setMenuOpen(false)}
                     className={`block rounded-xl px-3 py-2.5 text-sm font-semibold ${
-                      pathname === n.href ? "bg-brand/12 text-brand-strong" : "text-muted hover:bg-fg/5"
+                      pathname === n.href ? "bg-brand/20 text-brand-strong" : "text-muted hover:bg-fg/5"
                     }`}
                   >
                     {n.label}

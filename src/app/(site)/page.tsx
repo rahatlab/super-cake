@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { ArrowRight, CakeSlice, Clock, Headphones, ShieldCheck, Truck } from "lucide-react";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { Suspense } from "react";
 import {
   getCachedCakeRatings,
@@ -276,7 +277,9 @@ export default async function HomePage() {
           <div className="card relative overflow-hidden !border-brand/25 bg-gradient-to-br from-brand/12 via-transparent to-accent/12 p-7 sm:p-10">
             <div className="relative grid items-center gap-6 md:grid-cols-[1.4fr_1fr]">
               <div>
-                <span className="badge bg-brand text-brand-fg">🎨 Custom Order</span>
+                <span className="badge bg-brand text-brand-fg">
+                  <AnimIcon name="paint" className="h-3.5 w-3.5 shrink-0" /> Custom Order
+                </span>
                 <h2 className="mt-4 text-2xl font-extrabold sm:text-3xl">
                   নিজের আইডিয়া দিন — <span className="text-gradient">আমরা বানিয়ে দিচ্ছি</span>
                 </h2>
@@ -289,7 +292,7 @@ export default async function HomePage() {
                     Custom Cake অর্ডার করুন
                   </Link>
                   <a href={wa} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
-                    💬 Design আলোচনা করুন
+                    <AnimIcon name="whatsapp" className="h-4 w-4 shrink-0" /> Design আলোচনা করুন
                   </a>
                 </div>
               </div>

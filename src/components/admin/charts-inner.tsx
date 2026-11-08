@@ -1,5 +1,6 @@
 "use client";
 
+import { AnimIcon } from "@/components/ui/anim-icon";
 import {
   Bar,
   BarChart,
@@ -40,9 +41,7 @@ const TOOLTIP_STYLE = {
 function EmptyState({ text }: { text: string }) {
   return (
     <div className="grid place-items-center gap-2 py-12 text-center">
-      <span className="text-3xl" aria-hidden>
-        🍰
-      </span>
+      <AnimIcon name="cake" className="h-8 w-8" aria-hidden />
       <p className="text-sm font-semibold text-muted">{text}</p>
     </div>
   );

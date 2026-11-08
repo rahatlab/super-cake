@@ -7,11 +7,11 @@ import { Add01, Cancel01, Delete02, MinusSign, ShoppingBag01 } from "@animateico
 import { useCart } from "./cart-context";
 import { formatBDT, weightLabel } from "@/lib/utils";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 export function CartDrawer() {
   const { items, open, setOpen, subtotal, setQty, remove, count } = useCart();
   // AnimateIcons refs for cart icons
-  const cartBagIcon = useAnimIcon();
   const closeIcon = useAnimIcon();
   const trashIcon = useAnimIcon();
   const minusIcon = useAnimIcon();
@@ -40,7 +40,7 @@ export function CartDrawer() {
           >
             <header className="flex items-center justify-between border-b border-line px-5 py-4">
               <div className="flex items-center gap-2">
-                <ShoppingBag01 ref={cartBagIcon} className="h-5 w-5 text-brand" />
+                <ShoppingBag01 className="h-5 w-5 text-brand" />
                 <h2 className="text-base font-bold">আপনার কার্ট</h2>
                 <span className="badge bg-brand/12 text-brand-strong">{count} item</span>
               </div>
@@ -58,7 +58,7 @@ export function CartDrawer() {
             <div className="flex-1 overflow-y-auto px-4 py-4">
               {items.length === 0 ? (
                 <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-                  <span className="text-5xl">🧺</span>
+                  <AnimIcon name="cart" className="h-12 w-12" />
                   <p className="font-semibold">কার্ট এখন খালি</p>
                   <p className="text-sm text-muted">মজার কেক বেছে নিন এখনই!</p>
                   <Link href="/cakes" onClick={() => setOpen(false)} className="btn btn-primary btn-sm">

@@ -13,6 +13,7 @@ import {
   type ActionState,
 } from "@/lib/actions/admin";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 const initial: ActionState = {};
 
@@ -139,12 +140,12 @@ export function PromoManager({ promos, now }: { promos: PromoCode[]; now: number
 
         {state.error && (
           <p role="alert" className="mb-3 rounded-xl bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">
-            ⚠️ {state.error}
+            <AnimIcon name="alert" className="h-4 w-4 shrink-0" /> {state.error}
           </p>
         )}
         {state.success && !editing && (
           <p role="status" className="mb-3 rounded-xl bg-success/10 px-3 py-2 text-sm font-semibold text-success">
-            ✅ {state.success}
+            <AnimIcon name="check" className="h-4 w-4 shrink-0" /> {state.success}
           </p>
         )}
 
@@ -273,9 +274,7 @@ export function PromoManager({ promos, now }: { promos: PromoCode[]; now: number
 
         {promos.length === 0 ? (
           <div className="card grid place-items-center gap-2 py-16 text-center">
-            <span className="text-4xl" aria-hidden>
-              🎟️
-            </span>
+            <AnimIcon name="tag" className="h-10 w-10" aria-hidden />
             <p className="font-bold">কোনো promo কোড নেই</p>
             <p className="text-sm text-muted">বাঁ দিকের ফর্ম থেকে প্রথম কোড তৈরি করুন</p>
           </div>

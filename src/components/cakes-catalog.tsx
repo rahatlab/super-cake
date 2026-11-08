@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Cake } from "@/lib/types";
 import { CakeCard } from "@/components/cake-card";
 import { CatalogFilters, type CatalogState } from "@/components/catalog-filters";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 interface Rating {
   cake_slug: string;
@@ -119,7 +120,7 @@ export function CakesCatalog({
 
       {list.length === 0 ? (
         <div className="card mt-8 flex flex-col items-center gap-3 px-6 py-16 text-center">
-          <span className="text-5xl">🔎</span>
+          <AnimIcon name="search" className="h-12 w-12" />
           <h2 className="text-lg font-bold">এই ফিল্টারে কোনো কেক পাওয়া যায়নি</h2>
           <p className="max-w-sm text-sm text-muted">
             অন্য ফিল্টার চেষ্টা করুন, অথবা আমাদের কাস্টম কেক অর্ডার করুন — আপনার ডিজাইনে বানিয়ে দিচ্ছি।

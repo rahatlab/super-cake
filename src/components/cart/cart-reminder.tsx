@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { CakeSlice, ShoppingBag, X } from "lucide-react";
 import { useCart } from "./cart-context";
 import { formatBDT, waLink } from "@/lib/utils";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 const UPDATED_KEY = "sc_cart_updated";
 const DISMISS_KEY = "sc_cart_reminder_dismissed";
@@ -72,7 +73,7 @@ export function CartReminder({ whatsappPhone }: { whatsappPhone: string }) {
             </span>
 
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-extrabold">আপনার কার্টে কেক অপেক্ষা করছে 🎂</p>
+              <p className="text-sm font-extrabold">আপনার কার্টে কেক অপেক্ষা করছে <AnimIcon name="cake" className="h-4 w-4 shrink-0" /></p>
               <p className="mt-0.5 text-xs text-muted">
                 {count} টি আইটেম · {formatBDT(subtotal)} — অর্ডারটি শেষ করবেন?
               </p>

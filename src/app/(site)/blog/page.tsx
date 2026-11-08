@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { BookOpen, CalendarDays } from "lucide-react";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { getCachedSettings, listCachedPosts } from "@/lib/store/cache";
 import { formatDate } from "@/lib/utils";
 import { breadcrumbLd, ldJson, websiteLd } from "@/lib/seo";
@@ -48,7 +49,9 @@ export default async function BlogPage() {
       />
 
       <header className="mx-auto max-w-2xl text-center">
-        <span className="badge bg-brand/12 text-brand-strong">📖 Blog</span>
+        <span className="badge bg-brand/12 text-brand-strong">
+          <AnimIcon name="book" className="h-3.5 w-3.5 shrink-0" /> Blog
+        </span>
         <h1 className="mt-4 text-3xl font-extrabold sm:text-4xl">
           মিষ্টি <span className="text-gradient">খবর ও টিপস</span>
         </h1>
@@ -59,7 +62,7 @@ export default async function BlogPage() {
 
       {posts.length === 0 ? (
         <div className="card mt-10 px-6 py-16 text-center">
-          <span className="text-5xl">✍️</span>
+          <AnimIcon name="edit" className="h-12 w-12" />
           <h2 className="mt-3 text-lg font-bold">এখনো কোনো পোস্ট প্রকাশিত হয়নি</h2>
           <p className="mt-1 text-sm text-muted">শীঘ্রই নতুন লেখা আসছে — অপেক্ষা করুন!</p>
         </div>

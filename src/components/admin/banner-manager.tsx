@@ -9,6 +9,7 @@ import type { Banner } from "@/lib/types";
 import { cn, formatDateTime } from "@/lib/utils";
 import { deleteBannerAction, saveBannerAction, type ActionState } from "@/lib/actions/admin";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 const initial: ActionState = {};
 
@@ -79,12 +80,12 @@ export function BannerManager({ banners }: { banners: Banner[] }) {
 
         {state.error && (
           <p role="alert" className="mb-3 rounded-xl bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">
-            ⚠️ {state.error}
+            <AnimIcon name="alert" className="h-4 w-4 shrink-0" /> {state.error}
           </p>
         )}
         {state.success && (
           <p role="status" className="mb-3 rounded-xl bg-success/10 px-3 py-2 text-sm font-semibold text-success">
-            ✅ {state.success}
+            <AnimIcon name="check" className="h-4 w-4 shrink-0" /> {state.success}
           </p>
         )}
 

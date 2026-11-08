@@ -1,6 +1,7 @@
 import { getCakeFont } from "@/lib/cake-fonts";
 import { finishNameFor, syrupLabel } from "@/lib/custom-design";
 import type { Order } from "@/lib/types";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 type Spec = NonNullable<Order["custom_spec"]>;
 
@@ -60,22 +61,22 @@ export function CustomDesignSummary({ spec }: { spec: Spec }) {
     <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1.5">
       {spec.cake_shape && (
         <span>
-          🧁 <strong>আকৃতি:</strong> {SHAPE_LABELS[spec.cake_shape]}
+          <AnimIcon name="cake" className="h-4 w-4 shrink-0" /> <strong>আকৃতি:</strong> {SHAPE_LABELS[spec.cake_shape]}
         </span>
       )}
       {spec.tiers != null && (
         <span>
-          🏗️ <strong>টিয়ার:</strong> {spec.tiers}
+          <AnimIcon name="box" className="h-4 w-4 shrink-0" /> <strong>টিয়ার:</strong> {spec.tiers}
         </span>
       )}
       {spec.syrup && spec.syrup !== "none" && (
         <span>
-          🍯 <strong>সিরাপ:</strong> {syrupLabel(spec.syrup)}
+          <AnimIcon name="cake" className="h-4 w-4 shrink-0" /> <strong>সিরাপ:</strong> {syrupLabel(spec.syrup)}
         </span>
       )}
       {spec.decoration && spec.decoration !== "none" && (
         <span>
-          ✨ <strong>সাজসজ্জা:</strong> {DECORATION_LABELS[spec.decoration]}
+          <AnimIcon name="sparkles" className="h-4 w-4 shrink-0" /> <strong>সাজসজ্জা:</strong> {DECORATION_LABELS[spec.decoration]}
         </span>
       )}
       {spec.frosting_color && (
@@ -84,7 +85,7 @@ export function CustomDesignSummary({ spec }: { spec: Spec }) {
       {spec.message_color && <Swatch color={spec.message_color} label="লেখার রঙ" />}
       {spec.message_font && (
         <span>
-          🔤 <strong>ফন্ট:</strong> {getCakeFont(spec.message_font).label}
+          <AnimIcon name="note" className="h-4 w-4 shrink-0" /> <strong>ফন্ট:</strong> {getCakeFont(spec.message_font).label}
         </span>
       )}
     </p>

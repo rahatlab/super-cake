@@ -46,11 +46,13 @@ export function CatalogSyncButton({ configured }: { configured: boolean }) {
       type="button"
       onClick={sync}
       disabled={pending}
+      onMouseEnter={() => syncIcon.current?.startAnimation()}
+      onMouseLeave={() => syncIcon.current?.stopAnimation()}
       className="btn btn-soft btn-sm"
       aria-label="ক্যাটালগে কেক আপডেট করুন"
     >
       {pending ? (
-        <Loading01 ref={syncIcon} className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        <Loading01 className="h-3.5 w-3.5 animate-spin" aria-hidden />
       ) : (
         <Refresh01 ref={syncIcon} className="h-3.5 w-3.5" aria-hidden />
       )}

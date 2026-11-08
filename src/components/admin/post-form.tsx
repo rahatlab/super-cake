@@ -6,6 +6,7 @@ import { Cancel01, ImageAdd01, Loading01, Save } from "@animateicons/react/huge"
 import { savePostAction, uploadImagesAction, type ActionState } from "@/lib/actions/admin";
 import type { BlogPost } from "@/lib/types";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 const initial: ActionState = {};
 
@@ -57,12 +58,12 @@ export function PostForm({ post }: { post?: BlogPost }) {
       <div className="space-y-4">
         {state.error && (
           <p role="alert" className="rounded-xl bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">
-            ⚠️ {state.error}
+            <AnimIcon name="alert" className="h-4 w-4 shrink-0" /> {state.error}
           </p>
         )}
         {state.success && (
           <p role="status" className="rounded-xl bg-success/10 px-3 py-2 text-sm font-semibold text-success">
-            ✅ {state.success}
+            <AnimIcon name="check" className="h-4 w-4 shrink-0" /> {state.success}
           </p>
         )}
 
@@ -207,7 +208,11 @@ export function PostForm({ post }: { post?: BlogPost }) {
             </div>
           )}
 
-          <label className="btn btn-soft btn-sm w-full cursor-pointer">
+          <label
+            className="btn btn-soft btn-sm w-full cursor-pointer"
+            onMouseEnter={() => uploadIcon.current?.startAnimation()}
+            onMouseLeave={() => uploadIcon.current?.stopAnimation()}
+          >
             {uploading ? (
               <Loading01 className="h-3.5 w-3.5 animate-spin" aria-hidden />
             ) : (
@@ -233,7 +238,7 @@ export function PostForm({ post }: { post?: BlogPost }) {
 
           {uploadError && (
             <p role="alert" className="text-[11px] font-semibold text-danger">
-              ⚠️ {uploadError}
+              <AnimIcon name="alert" className="h-4 w-4 shrink-0" /> {uploadError}
             </p>
           )}
         </section>

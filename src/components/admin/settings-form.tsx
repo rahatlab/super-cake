@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { Settings } from "@/lib/types";
 import { saveSettingsAction, type ActionState } from "@/lib/actions/admin";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 const initial: ActionState = {};
 
@@ -25,12 +26,12 @@ export function SettingsForm({ settings }: { settings: Settings }) {
     <form action={formAction} className="space-y-5">
       {state.error && (
         <p role="alert" className="rounded-xl bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">
-          ⚠️ {state.error}
+          <AnimIcon name="alert" className="h-4 w-4 shrink-0" /> {state.error}
         </p>
       )}
       {state.success && (
         <p role="status" className="rounded-xl bg-success/10 px-3 py-2 text-sm font-semibold text-success">
-          ✅ {state.success}
+          <AnimIcon name="check" className="h-4 w-4 shrink-0" /> {state.success}
         </p>
       )}
 

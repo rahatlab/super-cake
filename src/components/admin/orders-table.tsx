@@ -7,6 +7,7 @@ import { OCCASIONS, ORDER_STATUS_META, PAYMENT_METHOD_LABEL } from "@/lib/consta
 import { cn, formatBDT, formatDateTime } from "@/lib/utils";
 import { Pagination } from "@/components/pagination";
 import type { Occasion, Order, OrderStatus, PaymentStatus } from "@/lib/types";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 const STATUS_OPTIONS = Object.keys(ORDER_STATUS_META) as OrderStatus[];
 const PAGE_SIZE = 10;
@@ -125,9 +126,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
       {/* table */}
       {filtered.length === 0 ? (
         <div className="card grid place-items-center gap-2 py-16 text-center">
-          <span className="text-4xl" aria-hidden>
-            🧾
-          </span>
+          <AnimIcon name="receipt" className="h-10 w-10" aria-hidden />
           <p className="font-bold">কোনো অর্ডার পাওয়া যায়নি</p>
           <p className="text-sm text-muted">ফিল্টার পরিবর্তন করে আবার দেখুন, অথবা নতুন অর্ডারের জন্য অপেক্ষা করুন।</p>
         </div>
@@ -203,7 +202,7 @@ export function OrdersTable({ orders }: { orders: Order[] }) {
                           className="ml-1.5 badge bg-amber-500/15 text-amber-600 dark:text-amber-400"
                           title="ফেক / সন্দেহজনক অর্ডার"
                         >
-                          🚩 ফেক
+                          <AnimIcon name="flag" className="h-3.5 w-3.5 shrink-0" /> ফেক
                         </span>
                       )}
                     </td>

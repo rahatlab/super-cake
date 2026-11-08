@@ -8,6 +8,7 @@ import { Cancel01, ImageAdd01, Loading01, Send, Star } from "@animateicons/react
 import { PartyPopper } from "lucide-react";
 import { submitReviewAction, type ReviewState } from "@/lib/actions/order";
 import { StarInput } from "@/components/star-rating";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { MAX_REVIEW_PHOTOS } from "@/lib/constants";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
@@ -93,7 +94,7 @@ export function ReviewForm({
           <PartyPopper className="h-8 w-8 text-white" />
         </motion.div>
 
-        <h2 className="mt-4 text-2xl font-extrabold">অনেক ধন্যবাদ! 🎉</h2>
+        <h2 className="mt-4 text-2xl font-extrabold">অনেক ধন্যবাদ! <AnimIcon name="sparkles" className="h-4 w-4 shrink-0" /></h2>
         <p className="mt-2 text-sm text-muted">
           আপনার রিভিউ জমা হয়েছে। Admin approval-এর পর এটি ওয়েবসাইটে প্রকাশিত হবে।
         </p>

@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { Key01, Loading01 } from "@animateicons/react/huge";
 import { changePasswordAction, type AuthState } from "@/lib/actions/auth";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 const initial: AuthState = {};
 
@@ -19,14 +20,13 @@ export function PasswordForm() {
     initial,
   );
   // AnimateIcons refs for password form icons
-  const headerKeyIcon = useAnimIcon();
   const submitKeyIcon = useAnimIcon();
 
   return (
     <section className="card p-5" aria-label="পাসওয়ার্ড বদলান">
       <div className="flex items-center gap-2.5">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand-strong">
-          <Key01 ref={headerKeyIcon} className="h-4 w-4" aria-hidden />
+          <Key01 className="h-4 w-4" aria-hidden />
         </span>
         <div>
           <h2 className="text-base font-extrabold">পাসওয়ার্ড বদলান</h2>
@@ -36,12 +36,12 @@ export function PasswordForm() {
 
       {state.error && (
         <p role="alert" className="mt-4 rounded-xl bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">
-          ⚠️ {state.error}
+          <AnimIcon name="alert" className="h-4 w-4 shrink-0" /> {state.error}
         </p>
       )}
       {state.success && (
         <p role="status" className="mt-4 rounded-xl bg-success/10 px-3 py-2 text-sm font-semibold text-success">
-          ✅ পাসওয়ার্ড বদলানো হয়েছে
+          <AnimIcon name="check" className="h-4 w-4 shrink-0" /> পাসওয়ার্ড বদলানো হয়েছে
         </p>
       )}
 

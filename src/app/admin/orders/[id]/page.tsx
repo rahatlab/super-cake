@@ -11,6 +11,7 @@ import {
   User,
 } from "lucide-react";
 import { getStore } from "@/lib/store";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { OCCASIONS, ORDER_STATUS_META, PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { formatBDT, formatDateTime, waLink, weightLabel } from "@/lib/utils";
 import { StatusControls } from "@/components/admin/status-controls";
@@ -65,7 +66,7 @@ export default async function AdminOrderDetailPage({
 
       {(order.is_flagged ?? false) && (
         <div className="card flex items-center gap-2 border-amber-400/40 bg-amber-500/10 p-4 text-sm font-semibold text-amber-700 dark:text-amber-300">
-          🚩 এই অর্ডারটি সন্দেহজনক / ফেক হিসেবে চিহ্নিত — কাস্টমারের স্ট্যাটাসে
+          <AnimIcon name="flag" className="h-4 w-4 shrink-0" /> এই অর্ডারটি সন্দেহজনক / ফেক হিসেবে চিহ্নিত — কাস্টমারের স্ট্যাটাসে
           ফেক অর্ডার হিসেবে গোনা হচ্ছে।
         </div>
       )}
@@ -205,28 +206,28 @@ export default async function AdminOrderDetailPage({
                 <p className="text-xs font-bold uppercase tracking-wide text-muted">Custom specification</p>
                 {order.custom_spec.message_on_cake && (
                   <p className="mt-2">
-                    ✍️ <strong>কেকের লেখা:</strong> {order.custom_spec.message_on_cake}
+                    <AnimIcon name="edit" className="h-4 w-4 shrink-0" /> <strong>কেকের লেখা:</strong> {order.custom_spec.message_on_cake}
                   </p>
                 )}
                 {order.custom_spec.design_notes && (
                   <p className="mt-1">
-                    🎨 <strong>ডিজাইন:</strong> {order.custom_spec.design_notes}
+                    <AnimIcon name="paint" className="h-4 w-4 shrink-0" /> <strong>ডিজাইন:</strong> {order.custom_spec.design_notes}
                   </p>
                 )}
                 <CustomDesignSummary spec={order.custom_spec} />
                 {order.custom_spec.servings != null && (
                   <p className="mt-1">
-                    👥 <strong>Servings:</strong> {order.custom_spec.servings}
+                    <AnimIcon name="user" className="h-4 w-4 shrink-0" /> <strong>Servings:</strong> {order.custom_spec.servings}
                   </p>
                 )}
                 {order.custom_spec.budget != null && (
                   <p className="mt-1">
-                    💰 <strong>বাজেট:</strong> {formatBDT(order.custom_spec.budget)}
+                    <AnimIcon name="money" className="h-4 w-4 shrink-0" /> <strong>বাজেট:</strong> {formatBDT(order.custom_spec.budget)}
                   </p>
                 )}
                 {order.custom_spec.reference_image && (
                   <p className="mt-1 break-all">
-                    🖼️ <strong>Reference:</strong>{" "}
+                    <AnimIcon name="image" className="h-4 w-4 shrink-0" /> <strong>Reference:</strong>{" "}
                     <a
                       href={order.custom_spec.reference_image}
                       target="_blank"
@@ -328,7 +329,7 @@ export default async function AdminOrderDetailPage({
 
             {order.payment_status === "paid" && order.order_status === "pending" && (
               <p className="mt-3 rounded-xl bg-success/10 px-3 py-2 text-xs font-semibold text-success">
-                পেমেন্ট ভেরিফাইড — অর্ডার অটো কনফার্ম হয়েছে ✅
+                পেমেন্ট ভেরিফাইড — অর্ডার অটো কনফার্ম হয়েছে <AnimIcon name="check" className="h-4 w-4 shrink-0" />
               </p>
             )}
 
@@ -340,7 +341,7 @@ export default async function AdminOrderDetailPage({
 
             {order.payment_method === "cod" && order.order_status === "completed" && (
               <p className="mt-3 rounded-xl bg-success/10 px-3 py-2 text-xs font-semibold text-success">
-                Cash on Delivery — টাকা সংগ্রহ সম্পন্ন হয়েছে ✅
+                Cash on Delivery — টাকা সংগ্রহ সম্পন্ন হয়েছে <AnimIcon name="check" className="h-4 w-4 shrink-0" />
               </p>
             )}
           </section>

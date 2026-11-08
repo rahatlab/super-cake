@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight02, Message01, Sparkles } from "@animateicons/react/huge";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 const HEADLINE = ["প্রতিটি", "উদ্‌যাপনে", "মিষ্টি", "হোক"];
 
@@ -105,7 +106,7 @@ export function Hero({
               <ArrowRight02 ref={orderIcon} className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link href="/custom-order" className="btn btn-ghost btn-lg">
-              🎨 Custom Cake বানান
+              <AnimIcon name="paint" className="h-4 w-4 shrink-0" /> Custom Cake বানান
             </Link>
             <a
               href={whatsapp}
@@ -160,7 +161,7 @@ export function Hero({
               className="card absolute -left-4 top-6 flex animate-float items-center gap-2 px-3 py-2 sm:-left-8"
               style={{ animationDelay: "0.4s" }}
             >
-              <span className="text-lg">🎂</span>
+              <AnimIcon name="cake" className="h-4 w-4" />
               <div className="leading-tight">
                 <p className="text-[11px] font-bold">Custom Design</p>
                 <p className="text-[10px] text-muted">আপনার আইডিয়া</p>
@@ -171,7 +172,7 @@ export function Hero({
               className="card absolute -right-3 bottom-10 flex animate-float items-center gap-2 px-3 py-2 sm:-right-6"
               style={{ animationDelay: "1s", animationDuration: "5s" }}
             >
-              <span className="text-lg">🚚</span>
+              <AnimIcon name="delivery" className="h-4 w-4" />
               <div className="leading-tight">
                 <p className="text-[11px] font-bold">Scheduled</p>
                 <p className="text-[10px] text-muted">আপনার তারিখে ডেলিভারি</p>

@@ -7,6 +7,7 @@ import { breadcrumbLd, ldJson } from "@/lib/seo";
 import { MIN_DELIVERY_LEAD_DAYS } from "@/lib/constants";
 import { dhakaDatePlus } from "@/lib/utils";
 import { CustomOrderForm } from "@/components/order/custom-order-form";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { payStationConfigured } from "@/lib/paystation";
 
 export const metadata: Metadata = {
@@ -47,7 +48,9 @@ export default async function CustomOrderPage() {
           <span className="font-semibold text-fg">Custom Cake</span>
         </nav>
 
-        <span className="badge bg-brand/12 text-brand-strong">🎨 Custom Order</span>
+        <span className="badge bg-brand/12 text-brand-strong">
+          <AnimIcon name="paint" className="h-3.5 w-3.5 shrink-0" /> Custom Order
+        </span>
         <h1 className="mt-3 text-3xl font-extrabold sm:text-4xl">
           আপনার <span className="text-gradient">ডিজাইনে</span> কেক বানান
         </h1>

@@ -12,6 +12,7 @@ import {
 import { getStore } from "@/lib/store";
 import { ORDER_STATUS_META } from "@/lib/constants";
 import { formatBDT, formatDateTime } from "@/lib/utils";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { PieStat, BarStat } from "@/components/admin/charts";
 
 export const metadata: Metadata = { title: "Overview" };
@@ -130,9 +131,7 @@ export default async function AdminOverviewPage() {
 
           {recent.length === 0 ? (
             <div className="grid place-items-center gap-2 py-14 text-center">
-              <span className="text-3xl" aria-hidden>
-                🧾
-              </span>
+              <AnimIcon name="receipt" className="h-8 w-8" aria-hidden />
               <p className="text-sm font-semibold text-muted">এখনো কোনো অর্ডার নেই</p>
             </div>
           ) : (
@@ -175,9 +174,7 @@ export default async function AdminOverviewPage() {
 
           {recentUsers.length === 0 ? (
             <div className="grid place-items-center gap-2 py-14 text-center">
-              <span className="text-3xl" aria-hidden>
-                👤
-              </span>
+              <AnimIcon name="user" className="h-8 w-8" aria-hidden />
               <p className="text-sm font-semibold text-muted">এখনো কোনো অ্যাকাউন্ট নেই</p>
             </div>
           ) : (

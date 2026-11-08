@@ -33,7 +33,13 @@ export function BlogShare({ title }: { title: string }) {
 
   return (
     <>
-      <button type="button" onClick={share} className="btn btn-ghost btn-sm !px-3">
+      <button
+        type="button"
+        onClick={share}
+        onMouseEnter={() => shareIcon.current?.startAnimation()}
+        onMouseLeave={() => shareIcon.current?.stopAnimation()}
+        className="btn btn-ghost btn-sm !px-3"
+      >
       <AnimatePresence mode="wait" initial={false}>
         {copied ? (
           <motion.span

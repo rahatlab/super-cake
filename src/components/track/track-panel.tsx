@@ -12,6 +12,7 @@ import { trackOrderAction, type TrackResult } from "@/lib/actions/order";
 import { useOrderLive } from "@/components/track/use-order-live";
 import { CustomDesignSummary, hasCustomDesign } from "@/components/order/custom-design-summary";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 const initialState: TrackResult = {};
 
@@ -257,7 +258,7 @@ function OrderTimeline({
   if (cancelled) {
     return (
       <div className="card border-danger/40 p-6 text-center">
-        <span className="text-4xl">❌</span>
+        <AnimIcon name="cancel" className="h-10 w-10" />
         <p className="mt-2 font-display text-xl font-extrabold text-danger">অর্ডার বাতিল করা হয়েছে</p>
         {stamps.get("cancelled") && (
           <p className="mt-1 text-xs text-muted">{formatDateTime(stamps.get("cancelled")!)}</p>
@@ -375,7 +376,7 @@ function LiveBadge({ source }: { source?: "realtime" | "poll" }) {
   if (!REALTIME_ENABLED && !source) {
     return (
       <span className="badge bg-fg/5 text-muted" title="Supabase anon key নেই">
-        ⏱ অটো রিফ্রেশ
+        <AnimIcon name="clock" className="h-3.5 w-3.5 shrink-0" /> অটো রিফ্রেশ
       </span>
     );
   }
@@ -408,7 +409,7 @@ function CustomDesignPreview({ order }: { order: Order }) {
 
   return (
     <section className="card p-5">
-      <h2 className="mb-3 text-base font-extrabold">🎨 আপনার কাস্টম ডিজাইন</h2>
+      <h2 className="mb-3 text-base font-extrabold"><AnimIcon name="paint" className="h-4 w-4 shrink-0" /> আপনার কাস্টম ডিজাইন</h2>
 
       <div className="grid gap-4 sm:grid-cols-[auto_1fr]">
         {spec.reference_image && (
@@ -428,7 +429,7 @@ function CustomDesignPreview({ order }: { order: Order }) {
             <div>
               <dt className="text-xs font-semibold text-muted">কেকের লেখা</dt>
               <dd className="mt-0.5 rounded-lg border border-dashed border-brand/40 bg-brand/6 px-3 py-1.5 font-semibold text-brand-strong">
-                ✍️ {spec.message_on_cake}
+                <AnimIcon name="edit" className="h-4 w-4 shrink-0" /> {spec.message_on_cake}
               </dd>
             </div>
           )}

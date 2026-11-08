@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { LogOut, MapPin, Package, Star } from "lucide-react";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { getCurrentUser, createReviewAccessToken } from "@/lib/auth";
 import { logoutAction } from "@/lib/actions/auth";
 import { PasswordForm } from "@/components/auth/password-form";
@@ -99,7 +100,7 @@ export default async function AccountPage() {
 
       {mine.length === 0 ? (
         <div className="card px-6 py-14 text-center">
-          <span className="text-5xl">🧺</span>
+          <AnimIcon name="cart" className="h-12 w-12" />
           <p className="mt-3 font-bold">এখনো কোনো অর্ডার করেননি</p>
           <p className="mt-1 text-sm text-muted">প্রথম অর্ডারে ১০% ছাড় — কোড WELCOME10 ব্যবহার করুন!</p>
           <Link href="/cakes" className="btn btn-primary mt-5">

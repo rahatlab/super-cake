@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import {
   CakeSlice,
   ClipboardList,
@@ -112,7 +113,7 @@ function SidebarBody({
       <div className="flex items-center justify-between gap-2 px-1">
         <Link href="/admin" className="flex items-center gap-2" onClick={onNavigate}>
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-accent text-lg shadow-soft">
-            🎂
+            <AnimIcon name="cake" className="h-5 w-5" />
           </span>
           <span className="font-display text-lg font-extrabold tracking-tight">
             Super<span className="text-gradient">Cake</span>

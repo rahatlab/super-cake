@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 /**
  * Last-resort boundary: this replaces the root layout, so it must render its own
@@ -34,9 +35,7 @@ export default function GlobalError({
         }}
       >
         <main style={{ maxWidth: 480, textAlign: "center" }}>
-          <p style={{ fontSize: 56, margin: 0 }} aria-hidden>
-            🍰
-          </p>
+          <AnimIcon name="cake" className="h-16 w-16" aria-hidden style={{ margin: 0 }} />
           <h1 style={{ fontSize: 28, margin: "16px 0 8px", fontWeight: 800 }}>
             সাইটটি সাময়িকভাবে বন্ধ আছে
           </h1>

@@ -4,6 +4,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { MapPin, ShieldCheck, Truck } from "lucide-react";
 import { Facebook, Instagram } from "@animateicons/react/huge";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { getCachedSettings, listCachedCakes } from "@/lib/store/cache";
 import { getCakeBySlug, getApprovedReviews } from "@/lib/store/queries";
 import { OCCASIONS, SITE } from "@/lib/constants";
@@ -121,7 +122,11 @@ export default async function CakeDetailPage({ params }: Ctx) {
 
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            {cake.is_featured && <span className="badge bg-brand text-brand-fg">⭐ Featured</span>}
+            {cake.is_featured && (
+              <span className="badge bg-brand text-brand-fg">
+                <AnimIcon name="star" className="h-3.5 w-3.5 shrink-0" /> Featured
+              </span>
+            )}
             <span className="badge bg-fg/6 text-muted">{cake.category}</span>
             {cake.stock <= 0 ? (
               <span className="badge bg-danger text-white">Sold Out</span>
@@ -190,7 +195,7 @@ export default async function CakeDetailPage({ params }: Ctx) {
           </div>
 
           <a href={wa} className="btn btn-soft btn-block mt-4">
-            💬 প্রশ্ন করুন WhatsApp এ
+            <AnimIcon name="whatsapp" className="h-4 w-4 shrink-0" /> প্রশ্ন করুন WhatsApp এ
           </a>
 
           {/* Social share */}
@@ -237,7 +242,7 @@ export default async function CakeDetailPage({ params }: Ctx) {
 
         {cakeReviews.length === 0 ? (
           <div className="card px-6 py-10 text-center">
-            <span className="text-4xl">🌟</span>
+            <AnimIcon name="sparkles" className="h-10 w-10" />
             <p className="mt-2 font-semibold">এখনো কোনো রিভিউ পাওয়া যায়নি</p>
             <p className="mt-1 text-sm text-muted">প্রথম customer হয়ে এই cake টি অর্ডার করুন!</p>
           </div>

@@ -23,7 +23,6 @@ export function CakeRowActions({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   // AnimateIcons refs for cake row actions
-  const toggleIcon = useAnimIcon();
   const trashIcon = useAnimIcon();
 
   function toggle() {
@@ -92,7 +91,7 @@ export function CakeRowActions({
         title={isActive ? "বন্ধ করুন" : "চালু করুন"}
       >
         {pending ? (
-          <Loading01 ref={toggleIcon} className="h-4 w-4 animate-spin" aria-hidden />
+          <Loading01 className="h-4 w-4 animate-spin" aria-hidden />
         ) : (
           <Power className="h-4 w-4" aria-hidden />
         )}

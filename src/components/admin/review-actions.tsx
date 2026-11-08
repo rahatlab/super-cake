@@ -78,11 +78,13 @@ export function ReviewActions({ reviewId, isApproved }: { reviewId: string; isAp
             type="button"
             onClick={approve}
             disabled={pending}
+            onMouseEnter={() => approveIcon.current?.startAnimation()}
+            onMouseLeave={() => approveIcon.current?.stopAnimation()}
             className="btn btn-sm bg-success/15 text-success hover:bg-success/25"
             aria-label="রিভিউ approve করুন"
           >
             {pending ? (
-              <Loading01 ref={approveIcon} className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              <Loading01 className="h-3.5 w-3.5 animate-spin" aria-hidden />
             ) : (
               <Check ref={approveIcon} className="h-3.5 w-3.5" aria-hidden />
             )}

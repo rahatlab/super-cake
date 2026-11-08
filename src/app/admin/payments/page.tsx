@@ -6,6 +6,7 @@ import { cn, formatBDT, formatDateTime, parsePageParam, waLink } from "@/lib/uti
 import type { PaymentStatus } from "@/lib/types";
 import { PaymentActions } from "@/components/admin/payment-actions";
 import { Pagination } from "@/components/pagination";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 export const metadata: Metadata = { title: "Payments" };
 
@@ -95,9 +96,7 @@ export default async function AdminPaymentsPage({
 
       {bkashOrders.length === 0 ? (
         <div className="card grid place-items-center gap-2 py-16 text-center">
-          <span className="text-4xl" aria-hidden>
-            💸
-          </span>
+          <AnimIcon name="money" className="h-10 w-10" aria-hidden />
           <p className="font-bold">এখনো কোনো bKash পেমেন্ট নেই</p>
           <p className="text-sm text-muted">কাস্টমার bKash-এ অর্ডার করলে এখানে দেখা যাবে</p>
         </div>

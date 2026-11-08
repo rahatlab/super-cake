@@ -12,6 +12,7 @@ import { saveCakeAction, uploadImagesAction, type ActionState } from "@/lib/acti
 import { compressImageFile } from "@/lib/compress-image";
 import type { Cake, Occasion } from "@/lib/types";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { OccasionIcon } from "@/components/occasion/occasion-chip";
 
 interface SizeRow {
@@ -170,7 +171,7 @@ export function CakeForm({ cake }: { cake?: Cake }) {
       {/* result banners */}
       {state.success && (
         <div className="card flex flex-wrap items-center gap-3 border-success/40 bg-success/5 p-4">
-          <p className="flex-1 text-sm font-bold text-success">✅ {state.success}</p>
+          <p className="flex-1 text-sm font-bold text-success"><AnimIcon name="check" className="h-4 w-4 shrink-0" /> {state.success}</p>
           <Link href="/admin/cakes" className="btn btn-soft btn-sm">
             কেক লিস্টে ফিরুন
           </Link>
@@ -183,12 +184,12 @@ export function CakeForm({ cake }: { cake?: Cake }) {
       )}
       {state.error && (
         <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-semibold text-danger">
-          ⚠️ {state.error}
+          <AnimIcon name="alert" className="h-4 w-4 shrink-0" /> {state.error}
         </p>
       )}
       {uploadError && (
         <p role="alert" className="rounded-xl bg-danger/10 px-4 py-3 text-sm font-semibold text-danger">
-          ⚠️ {uploadError}
+          <AnimIcon name="alert" className="h-4 w-4 shrink-0" /> {uploadError}
         </p>
       )}
 
@@ -277,15 +278,15 @@ export function CakeForm({ cake }: { cake?: Cake }) {
             <div className="flex flex-col justify-end gap-2 pb-1">
               <label className="flex items-center gap-2 text-sm font-semibold">
                 <input type="checkbox" name="is_featured" defaultChecked={cake?.is_featured} className="h-4 w-4 accent-brand" />
-                ⭐ Featured (হোমপেজে দেখাবে)
+                <AnimIcon name="star" className="h-4 w-4 shrink-0" /> Featured (হোমপেজে দেখাবে)
               </label>
               <label className="flex items-center gap-2 text-sm font-semibold">
                 <input type="checkbox" name="is_custom_available" defaultChecked={cake?.is_custom_available} className="h-4 w-4 accent-brand" />
-                ✏️ Custom অর্ডার নেওয়া হবে
+                <AnimIcon name="edit" className="h-4 w-4 shrink-0" /> Custom অর্ডার নেওয়া হবে
               </label>
               <label className="flex items-center gap-2 text-sm font-semibold">
                 <input type="checkbox" name="is_active" defaultChecked={cake?.is_active ?? true} className="h-4 w-4 accent-brand" />
-                ✅ Active (সেলে দেখাবে)
+                <AnimIcon name="check" className="h-4 w-4 shrink-0" /> Active (সেলে দেখাবে)
               </label>
             </div>
           </div>

@@ -6,6 +6,7 @@ import { getStore } from "@/lib/store";
 import { cn, formatDate, parsePageParam } from "@/lib/utils";
 import { PostRowActions } from "@/components/admin/post-row-actions";
 import { Pagination } from "@/components/pagination";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 export const metadata: Metadata = { title: "Blog" };
 
@@ -43,9 +44,7 @@ export default async function AdminBlogPage({
 
       {sorted.length === 0 ? (
         <div className="card grid place-items-center gap-3 px-6 py-16 text-center">
-          <span className="text-5xl" aria-hidden>
-            ✍️
-          </span>
+          <AnimIcon name="edit" className="h-12 w-12" aria-hidden />
           <p className="font-bold">এখনো কোনো ব্লগ পোস্ট নেই</p>
           <p className="max-w-sm text-sm text-muted">
             প্রথম পোস্ট লিখুন — কেকের টিপস, রেসিপি বা অফারের খবর। Google-এ ট্রাফিক বাড়াতে সাহায্য করবে।
@@ -88,9 +87,7 @@ export default async function AdminBlogPage({
                             className="object-cover"
                           />
                         ) : (
-                          <span className="grid h-full w-full place-items-center text-lg" aria-hidden>
-                            📝
-                          </span>
+                          <AnimIcon name="note" className="h-4 w-4" aria-hidden />
                         )}
                       </span>
                       <div className="min-w-0">

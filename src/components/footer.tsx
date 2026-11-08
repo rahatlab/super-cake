@@ -13,9 +13,13 @@ import {
 import type { Settings } from "@/lib/types";
 import { waLink } from "@/lib/utils";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 export function Footer({ settings }: { settings: Settings }) {
   const year = new Date().getFullYear();
+  const phoneIcon = useAnimIcon();
+  const mailIcon = useAnimIcon();
+  const locationIcon = useAnimIcon();
   const fbIcon = useAnimIcon();
   const igIcon = useAnimIcon();
   const codIcon = useAnimIcon();
@@ -29,7 +33,7 @@ export function Footer({ settings }: { settings: Settings }) {
         <div className="md:col-span-2">
           <div className="flex items-center gap-2">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-accent text-lg">
-              🎂
+              <AnimIcon name="cake" className="h-5 w-5" />
             </span>
             <span className="font-display text-xl font-extrabold text-gradient">
               {settings.store_name}
@@ -40,25 +44,34 @@ export function Footer({ settings }: { settings: Settings }) {
             {settings.address}-এ ডেলিভারি।
           </p>
 
-          <div className="mt-5 space-y-2 text-sm text-muted">
+          <div className="mt-5 flex flex-col gap-2 text-sm text-muted">
             {/* Phone */}
             <a
               href={waLink(settings.whatsapp_phone, `হ্যালো ${settings.store_name}!`)}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 hover:text-brand-strong"
-              onMouseEnter={() => fbIcon.current?.startAnimation()}
-              onMouseLeave={() => fbIcon.current?.stopAnimation()}
+              className="flex w-fit items-center gap-2 hover:text-brand-strong"
+              onMouseEnter={() => phoneIcon.current?.startAnimation()}
+              onMouseLeave={() => phoneIcon.current?.stopAnimation()}
             >
-              <Phone className="h-4 w-4 shrink-0" /> {settings.phone}
+              <Phone ref={phoneIcon} className="h-4 w-4 shrink-0" /> {settings.phone}
             </a>
             {/* Email */}
-            <span className="inline-flex items-center gap-2">
-              <Mail01 className="h-4 w-4 shrink-0" /> {settings.email}
-            </span>
+            <a
+              href={`mailto:${settings.email}`}
+              className="flex w-fit items-center gap-2 hover:text-brand-strong"
+              onMouseEnter={() => mailIcon.current?.startAnimation()}
+              onMouseLeave={() => mailIcon.current?.stopAnimation()}
+            >
+              <Mail01 ref={mailIcon} className="h-4 w-4 shrink-0" /> {settings.email}
+            </a>
             {/* Address */}
-            <span className="inline-flex items-center gap-2">
-              <Location01 className="h-4 w-4 shrink-0" /> {settings.address}
+            <span
+              className="flex w-fit items-center gap-2"
+              onMouseEnter={() => locationIcon.current?.startAnimation()}
+              onMouseLeave={() => locationIcon.current?.stopAnimation()}
+            >
+              <Location01 ref={locationIcon} className="h-4 w-4 shrink-0" /> {settings.address}
             </span>
             {/* Facebook */}
             {settings.facebook && (
@@ -66,7 +79,7 @@ export function Footer({ settings }: { settings: Settings }) {
                 href={settings.facebook}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 hover:text-brand-strong"
+                className="flex w-fit items-center gap-2 hover:text-brand-strong"
                 onMouseEnter={() => fbIcon.current?.startAnimation()}
                 onMouseLeave={() => fbIcon.current?.stopAnimation()}
               >
@@ -79,7 +92,7 @@ export function Footer({ settings }: { settings: Settings }) {
                 href={settings.instagram}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 hover:text-brand-strong"
+                className="flex w-fit items-center gap-2 hover:text-brand-strong"
                 onMouseEnter={() => igIcon.current?.startAnimation()}
                 onMouseLeave={() => igIcon.current?.stopAnimation()}
               >
@@ -115,19 +128,31 @@ export function Footer({ settings }: { settings: Settings }) {
         {/* Payment */}
         <div>
           <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted">পেমেন্ট</h3>
-          <ul className="space-y-2 text-sm text-muted">
+          <ul className="flex flex-col gap-2 text-sm text-muted">
             {settings.cod_enabled && (
-              <li className="inline-flex items-center gap-2">
+              <li
+                className="flex w-fit items-center gap-2 transition-colors hover:text-brand-strong"
+                onMouseEnter={() => codIcon.current?.startAnimation()}
+                onMouseLeave={() => codIcon.current?.stopAnimation()}
+              >
                 <MoneyBag01 ref={codIcon} className="h-4 w-4 shrink-0" />
                 Cash on Delivery
               </li>
             )}
             {settings.bkash_enabled && (
-              <li className="inline-flex items-center gap-2">
+              <li
+                className="flex w-fit items-center gap-2 transition-colors hover:text-brand-strong"
+                onMouseEnter={() => bkashIcon.current?.startAnimation()}
+                onMouseLeave={() => bkashIcon.current?.stopAnimation()}
+              >
                 <Phone ref={bkashIcon} className="h-4 w-4 shrink-0" /> bKash (Send Money)
               </li>
             )}
-            <li className="inline-flex items-center gap-2">
+            <li
+              className="flex w-fit items-center gap-2 transition-colors hover:text-brand-strong"
+              onMouseEnter={() => deliveryIcon.current?.startAnimation()}
+              onMouseLeave={() => deliveryIcon.current?.stopAnimation()}
+            >
               <DeliveryTruck01 ref={deliveryIcon} className="h-4 w-4 shrink-0" /> ডেলিভারি চার্জ ৳{settings.delivery_charge}
             </li>
             {settings.free_delivery_enabled && settings.free_delivery_min > 0 && (
@@ -144,7 +169,7 @@ export function Footer({ settings }: { settings: Settings }) {
           <p>
             © {year} {settings.store_name}. সর্বস্বত্ব সংরক্ষিত।
           </p>
-          <p>Made with 🎂 in Bangladesh</p>
+          <p>Made with <AnimIcon name="cake" className="h-4 w-4 shrink-0" /> in Bangladesh</p>
         </div>
       </div>
     </footer>

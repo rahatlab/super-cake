@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Star } from "@animateicons/react/huge";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { getStore } from "@/lib/store";
 import { cn, formatDateTime, parsePageParam } from "@/lib/utils";
 import { Stars } from "@/components/star-rating";
@@ -60,9 +61,7 @@ export default async function AdminReviewsPage({
 
       {sorted.length === 0 ? (
         <div className="card grid place-items-center gap-2 py-16 text-center">
-          <span className="text-4xl" aria-hidden>
-            ⭐
-          </span>
+          <AnimIcon name="star" className="h-10 w-10" aria-hidden />
           <p className="font-bold">এখনো কোনো রিভিউ নেই</p>
           <p className="text-sm text-muted">ডেলিভারির পর কাস্টমার রিভিউ দিলে এখানে আসবে</p>
         </div>
@@ -91,7 +90,7 @@ export default async function AdminReviewsPage({
                         target="_blank"
                         className="badge bg-brand/10 text-brand-strong hover:underline"
                       >
-                        🍰 {r.cake_slug}
+                        <AnimIcon name="cake" className="h-4 w-4 shrink-0" /> {r.cake_slug}
                       </Link>
                     )}
                   </div>

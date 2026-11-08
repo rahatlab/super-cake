@@ -8,6 +8,7 @@ import { getCurrentUser, verifyReviewAccessToken } from "@/lib/auth";
 import { formatBDT } from "@/lib/utils";
 import { breadcrumbLd, ldJson } from "@/lib/seo";
 import { ReviewForm } from "@/components/review-form";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { Stars } from "@/components/star-rating";
 
 export const metadata: Metadata = {
@@ -53,7 +54,9 @@ export default async function ReviewPage({
 
       <div className="mx-auto max-w-xl">
         <div className="mb-6 text-center">
-          <span className="badge bg-brand/12 text-brand-strong">🌟 Customer Review</span>
+          <span className="badge bg-brand/12 text-brand-strong">
+            <AnimIcon name="sparkles" className="h-3.5 w-3.5 shrink-0" /> Customer Review
+          </span>
           <h1 className="mt-4 text-3xl font-extrabold sm:text-4xl">
             কেমন লাগলো <span className="text-gradient">আপনার কেক</span>?
           </h1>
@@ -79,7 +82,9 @@ export default async function ReviewPage({
         {existing ? (
           <div className="card p-8 text-center">
             <PartyPopper className="mx-auto h-10 w-10 text-brand" />
-            <h2 className="mt-3 text-xl font-extrabold">ধন্যবাদ! আপনার রিভিউ জমা হয়েছে ✅</h2>
+            <h2 className="mt-3 text-xl font-extrabold">
+              ধন্যবাদ! আপনার রিভিউ জমা হয়েছে <AnimIcon name="check" className="h-4 w-4 shrink-0" />
+            </h2>
             <div className="mt-4 flex justify-center">
               <Stars value={existing.rating} size={22} />
             </div>

@@ -8,6 +8,8 @@ import { listWhatsAppLogs, summarizeWhatsAppLogs, type WhatsAppLogStatus } from 
 import { cn, formatDateTime } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "WhatsApp" };
+import { AnimIcon } from "@/components/ui/anim-icon";
+
 export const dynamic = "force-dynamic";
 
 const STATUS_STYLE: Record<WhatsAppLogStatus, string> = {
@@ -127,9 +129,7 @@ export default async function AdminWhatsAppPage({
 
       {!configured ? (
         <div className="card grid place-items-center gap-2 py-16 text-center">
-          <span className="text-4xl" aria-hidden>
-            📱
-          </span>
+          <AnimIcon name="whatsapp" className="h-10 w-10" aria-hidden />
           <p className="font-bold">Supabase সংযোগ নেই</p>
           <p className="max-w-md text-sm text-muted">
             মেসেজ লগ সংরক্ষণ করতে <code className="font-mono">NEXT_PUBLIC_SUPABASE_URL</code> ও{" "}

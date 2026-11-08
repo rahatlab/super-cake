@@ -7,6 +7,7 @@ import { Key01, Loading01, Mail01, Message01 } from "@animateicons/react/huge";
 import { resetPasswordAction, resetPasswordByEmailAction, requestEmailOtpAction, verifyEmailOtpAction, type AuthState } from "@/lib/actions/auth";
 import { OtpVerify } from "@/components/auth/otp-verify";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 type ResetMethod = "phone" | "email";
 
@@ -46,7 +47,7 @@ export function ResetPasswordForm() {
       } else {
         setEmailError(result.error || "কোড পাঠানো যায়নি");
       }
-    } catch (e) {
+    } catch {
       setEmailError("কোড পাঠানো যায়নি");
     } finally {
       setSendingEmail(false);
@@ -64,7 +65,7 @@ export function ResetPasswordForm() {
       } else {
         setEmailError(result.error || "যাচাই ব্যর্থ");
       }
-    } catch (e) {
+    } catch {
       setEmailError("যাচাই ব্যর্থ");
     } finally {
       setVerifyingEmail(false);
@@ -97,7 +98,7 @@ export function ResetPasswordForm() {
     >
       <div className="mb-6 text-center">
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-to-br from-brand to-accent text-2xl">
-          🔑
+          <AnimIcon name="lock" className="h-7 w-7" />
         </span>
         <h1 className="mt-4 text-2xl font-extrabold">পাসওয়ার্ড রিসেট</h1>
         <p className="mt-1.5 text-sm text-muted">
@@ -230,7 +231,7 @@ export function ResetPasswordForm() {
 
             {emailSuccess && (
               <div className="rounded-xl border border-success/40 bg-success/10 px-4 py-2 text-sm font-semibold text-success">
-                ✅ ইমেইল যাচাই সম্পন্ন
+                <AnimIcon name="check" className="h-4 w-4 shrink-0" /> ইমেইল যাচাই সম্পন্ন
               </div>
             )}
           </>

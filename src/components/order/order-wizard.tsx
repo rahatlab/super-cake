@@ -33,6 +33,7 @@ import { OrderLoadingOverlay } from "@/components/order/order-loading-overlay";
 import { OccasionButton } from "@/components/order/occasion-button";
 import { CreditCardIcon, LockKeyholeIcon, PhoneIcon, Wallet01Icon } from "@animateicons/react/huge";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 const STEPS = ["Occasion", "Cake Details", "Delivery", "Payment"];
 
@@ -298,7 +299,7 @@ export function OrderWizard({
           transition={{ type: "spring", stiffness: 200, damping: 14 }}
           className="text-6xl"
         >
-          🧺
+          <AnimIcon name="cart" className="h-16 w-16" />
         </motion.span>
         <h2 className="text-xl font-extrabold">আপনার কার্ট খালি</h2>
         <p className="max-w-sm text-sm text-muted">
@@ -428,7 +429,7 @@ export function OrderWizard({
 
           {/* ---------------- STEP 1: occasion ---------------- */}
           <section className={step === 0 ? "card p-6" : "hidden"} aria-hidden={step !== 0}>
-            <h2 className="text-xl font-extrabold">কোন occasion এর জন্য? 🎯</h2>
+            <h2 className="text-xl font-extrabold">কোন occasion এর জন্য? <AnimIcon name="target" className="h-4 w-4 shrink-0" /></h2>
             <p className="mt-1.5 text-sm text-muted">
               এটা আমাদের পরবর্তী step সহজ করবে — একটাই ক্লিক
             </p>
@@ -507,7 +508,7 @@ export function OrderWizard({
 
             <div className="card space-y-4 p-6">
               <div>
-                <h3 className="text-lg font-extrabold">Message / Design 🎨</h3>
+                <h3 className="text-lg font-extrabold">Message / Design <AnimIcon name="paint" className="h-4 w-4 shrink-0" /></h3>
                 <p className="mt-1 text-sm text-muted">ঐচ্ছিক — কিন্তু কেক আরও special হবে!</p>
               </div>
 
@@ -560,7 +561,7 @@ export function OrderWizard({
           {/* ---------------- STEP 3: delivery ---------------- */}
           <section className={step === 2 ? "card space-y-4 p-6" : "hidden"} aria-hidden={step !== 2}>
             <div>
-              <h2 className="text-xl font-extrabold">ডেলিভারি তথ্য 🚚</h2>
+              <h2 className="text-xl font-extrabold">ডেলিভারি তথ্য <AnimIcon name="delivery" className="h-4 w-4 shrink-0" /></h2>
               <p className="mt-1 text-sm text-muted">
                 অন্তত ২ দিন আগে অর্ডার করলে custom cake নিশ্চিত হবে
               </p>

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getCachedSettings } from "@/lib/store/cache";
 import { breadcrumbLd, ldJson } from "@/lib/seo";
 import { TrackPanel } from "@/components/track/track-panel";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 export const metadata: Metadata = {
   title: "অর্ডার ট্র্যাক করুন",
@@ -34,7 +35,9 @@ export default async function TrackPage({
       />
 
       <header className="mx-auto mb-8 max-w-3xl text-center">
-        <span className="badge bg-brand/12 text-brand-strong">📦 Live Tracking</span>
+        <span className="badge bg-brand/12 text-brand-strong">
+          <AnimIcon name="box" className="h-3.5 w-3.5 shrink-0" /> Live Tracking
+        </span>
         <h1 className="mt-4 text-3xl font-extrabold sm:text-4xl">
           আপনার অর্ডার <span className="text-gradient">কোথায়</span>?
         </h1>

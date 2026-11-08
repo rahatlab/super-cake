@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { Home, RotateCcw } from "lucide-react";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 /**
  * Route-level error boundary. Catches render/data errors in any route below the
@@ -22,9 +23,7 @@ export default function AppError({
 
   return (
     <div className="container-page flex min-h-[65vh] flex-col items-center justify-center py-16 text-center">
-      <span className="text-6xl" aria-hidden>
-        🍰
-      </span>
+      <AnimIcon name="cake" className="h-16 w-16" aria-hidden />
       <p className="mt-6 font-display text-5xl font-extrabold text-gradient">ওহো!</p>
       <h1 className="mt-3 text-2xl font-extrabold sm:text-3xl">কিছু একটা ভুল হয়ে গেছে</h1>
       <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
@@ -44,7 +43,7 @@ export default function AppError({
           <Home className="h-4 w-4" aria-hidden /> হোমে ফিরুন
         </Link>
         <Link href="/cakes" className="btn btn-soft btn-lg">
-          🎂 কেক দেখুন
+          <AnimIcon name="cake" className="h-4 w-4 shrink-0" /> কেক দেখুন
         </Link>
       </div>
     </div>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { toggleOrderFlagAction } from "@/lib/actions/admin";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 /**
  * 🚩 Mark/unmark an order as a suspected fake order. The flag rolls up into
@@ -46,7 +47,7 @@ export function FlagToggle({ orderId, flagged }: { orderId: string; flagged: boo
       title="সন্দেহজনক / ফেক অর্ডার হিসেবে চিহ্নিত করুন"
     >
       {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
-      🚩 {flagged ? "ফেক চিহ্নিত" : "ফেক অর্ডার?"}
+      <AnimIcon name="flag" className="h-4 w-4 shrink-0" /> {flagged ? "ফেক চিহ্নিত" : "ফেক অর্ডার?"}
     </button>
   );
 }

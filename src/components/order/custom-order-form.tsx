@@ -7,6 +7,7 @@ import type { Settings } from "@/lib/types";
 import { DELIVERY_SLOTS } from "@/lib/constants";
 import { REFERRAL_MAX_DISCOUNT, REFERRAL_PERCENT } from "@/lib/pricing";
 import { formatBDT, weightLabel } from "@/lib/utils";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import {
   getCartLeadTokenAction,
   placeOrderAction,
@@ -245,7 +246,7 @@ export function CustomOrderForm({
 
         <section className="card space-y-5 p-6">
           <div>
-            <h2 className="text-xl font-extrabold">১. ডিজাইন নির্বাচন 🎨</h2>
+            <h2 className="text-xl font-extrabold">১. ডিজাইন নির্বাচন <AnimIcon name="paint" className="h-4 w-4 shrink-0" /></h2>
             <p className="mt-1 text-sm text-muted">আপনার পছন্দ অনুযায়ী কেক কাস্টমাইজ করুন</p>
           </div>
 
@@ -566,7 +567,7 @@ export function CustomOrderForm({
         </section>
 
         <section className="card space-y-4 p-6">
-          <h2 className="text-xl font-extrabold">২. আপনার তথ্য ও ডেলিভারি 🚚</h2>
+          <h2 className="text-xl font-extrabold">২. আপনার তথ্য ও ডেলিভারি <AnimIcon name="delivery" className="h-4 w-4 shrink-0" /></h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
@@ -621,7 +622,7 @@ export function CustomOrderForm({
         </section>
 
         <section className="card space-y-4 p-6">
-          <h2 className="text-xl font-extrabold">৩. পেমেন্ট 💳</h2>
+          <h2 className="text-xl font-extrabold">৩. পেমেন্ট <AnimIcon name="card" className="h-4 w-4 shrink-0" /></h2>
 
           <div className="grid gap-3 sm:grid-cols-2">
             {settings.cod_enabled && (

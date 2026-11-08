@@ -9,6 +9,7 @@ import { ORDER_STATUS_META, PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { getCurrentUser, verifyOrderAccessToken, createReviewAccessToken } from "@/lib/auth";
 import { SuccessAnimation } from "@/components/order/success-animation";
 import { ClearCartOnMount } from "@/components/order/clear-cart";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 export const metadata: Metadata = {
   title: "অর্ডার সফল হয়েছে",
@@ -72,7 +73,9 @@ export default async function OrderSuccessPage({
 
       <div className="mx-auto mt-7 max-w-xl text-center">
         <span className="badge bg-success/15 text-success">✓ {meta.bn}</span>
-        <h1 className="mt-4 text-3xl font-extrabold sm:text-4xl">অর্ডার সফল হয়েছে! 🎉</h1>
+        <h1 className="mt-4 text-3xl font-extrabold sm:text-4xl">
+          অর্ডার সফল হয়েছে! <AnimIcon name="sparkles" className="h-4 w-4 shrink-0" />
+        </h1>
         <p className="mt-3 text-sm leading-relaxed text-muted">
           ধন্যবাদ <strong className="text-fg">{order.customer_name}</strong> — আপনার অর্ডার আমরা পেয়েছি।
           {order.payment_method === "bkash" && order.payment_status === "pending_verify"

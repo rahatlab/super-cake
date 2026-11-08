@@ -9,6 +9,7 @@ import { formatDate } from "@/lib/utils";
 import { blogLd, breadcrumbLd, ldJson } from "@/lib/seo";
 import { Markdown, ReadingTime } from "@/components/markdown";
 import { BlogShare } from "@/components/blog-share";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 interface Ctx {
   params: Promise<{ slug: string }>;
@@ -86,7 +87,8 @@ export default async function BlogPostPage({ params }: Ctx) {
             {post.published_at ? formatDate(post.published_at) : ""}
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <span aria-hidden>✍️</span> {settings.store_name}
+            <AnimIcon name="edit" className="h-4 w-4 shrink-0" aria-hidden />{" "}
+              {settings.store_name}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <ReadingTime text={post.content} />
@@ -120,7 +122,9 @@ export default async function BlogPostPage({ params }: Ctx) {
 
       {/* CTA */}
       <div className="mx-auto mt-12 max-w-3xl rounded-2xl border border-brand/25 bg-gradient-to-r from-brand/12 to-accent/10 p-6 text-center">
-        <p className="font-display text-xl font-extrabold">এই লেখা ভালো লাগলো? 🎂</p>
+        <p className="font-display text-xl font-extrabold">
+          এই লেখা ভালো লাগলো? <AnimIcon name="cake" className="h-4 w-4 shrink-0" />
+        </p>
         <p className="mt-1.5 text-sm text-muted">
           নিজের পছন্দের কেক বেছে নিন — ৩ ধাপেই অর্ডার সম্পন্ন।
         </p>

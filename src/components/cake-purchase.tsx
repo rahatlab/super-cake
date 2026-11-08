@@ -9,6 +9,7 @@ import { formatBDT, waLink, weightLabel } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/reveal";
 import { useCart } from "@/components/cart/cart-context";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 export function CakePurchase({
   cake,
@@ -29,9 +30,7 @@ export function CakePurchase({
   // AnimateIcons refs for purchase action icons
   const minusIcon = useAnimIcon();
   const plusIcon = useAnimIcon();
-  const bagIcon = useAnimIcon();
   const zapIcon = useAnimIcon();
-  const checkIcon = useAnimIcon();
 
   const available = useMemo(() => (cake.sizes ?? []).filter((s) => s.is_available), [cake.sizes]);
   const initial = available.find((s) => s.weight === 1) ?? available[0];
@@ -191,7 +190,7 @@ export function CakePurchase({
                 exit={{ scale: 0.6, opacity: 0 }}
                 className="inline-flex items-center gap-2"
               >
-                <Check ref={checkIcon} className="h-4 w-4" /> কার্টে যোগ হয়েছে
+                <Check className="h-4 w-4" /> কার্টে যোগ হয়েছে
               </motion.span>
             ) : (
               <motion.span
@@ -201,7 +200,7 @@ export function CakePurchase({
                 exit={{ scale: 0.6, opacity: 0 }}
                 className="inline-flex items-center gap-2"
               >
-                <ShoppingBag01 ref={bagIcon} className="h-4 w-4" />
+                <ShoppingBag01 className="h-4 w-4" />
                 {soldOut ? "Sold Out" : "কার্টে দিন"}
               </motion.span>
             )}
@@ -215,7 +214,7 @@ export function CakePurchase({
         )}
 
         <a href={wa} target="_blank" rel="noopener noreferrer" className="btn btn-soft btn-block">
-          💬 WhatsApp এ অর্ডার
+          <AnimIcon name="whatsapp" className="h-4 w-4 shrink-0" /> WhatsApp এ অর্ডার
         </a>
       </div>
 
@@ -227,8 +226,8 @@ export function CakePurchase({
               ? `🚚 ডেলিভারি ${formatBDT(deliveryCharge)} — ${formatBDT(freeDeliveryMin)}+ অর্ডারে ফ্রি`
               : `🚚 ডেলিভারি চার্জ ${formatBDT(deliveryCharge)} — পরের step এ যোগ হবে`}
         </li>
-        <li>💳 Cash on Delivery বা bKash — দুটোই চলবে</li>
-        <li>✍️ Message on cake ও design note অর্ডারের সময় দিতে পারবেন</li>
+        <li><AnimIcon name="card" className="h-4 w-4 shrink-0" /> Cash on Delivery বা bKash — দুটোই চলবে</li>
+        <li><AnimIcon name="edit" className="h-4 w-4 shrink-0" /> Message on cake ও design note অর্ডারের সময় দিতে পারবেন</li>
       </ul>
     </div>
   );

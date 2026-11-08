@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Pencil, Plus, Star } from "lucide-react";
 import { Facebook } from "@animateicons/react/huge";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { getStore } from "@/lib/store";
 import { formatBDT, parsePageParam, weightLabel } from "@/lib/utils";
 import { CakeRowActions } from "@/components/admin/cake-row-actions";
@@ -40,9 +41,7 @@ export default async function AdminCakesPage({
 
       {cakes.length === 0 ? (
         <div className="card grid place-items-center gap-3 px-6 py-16 text-center">
-          <span className="text-5xl" aria-hidden>
-            🎂
-          </span>
+          <AnimIcon name="cake" className="h-12 w-12" aria-hidden />
           <p className="font-bold">কোনো কেক নেই</p>
           <p className="max-w-sm text-sm text-muted">
             প্রথম কেক যোগ করুন — নাম, ছবি আর ওজন অনুযায়ী দাম দিলেই সাইটে চলে যাবে।

@@ -1,1 +1,0 @@
-export const revalidate = 180; // Revalidate every 3 minutes

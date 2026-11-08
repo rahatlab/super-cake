@@ -7,6 +7,7 @@ import { toggleUserBlockAction } from "@/lib/actions/admin";
 import { Pagination } from "@/components/pagination";
 import { formatBDT, formatDateTime } from "@/lib/utils";
 import type { Profile, UserOrderStats } from "@/lib/types";
+import { AnimIcon } from "@/components/ui/anim-icon";
 
 interface UsersListProps {
   users: Profile[];
@@ -34,7 +35,7 @@ export function UsersList({ users, stats }: UsersListProps) {
         } else {
           toast.success(result.success || "ইউজার স্ট্যাটাস আপডেট হয়েছে");
         }
-      } catch (error) {
+      } catch {
         toast.error("কিছু ভুল হয়েছে");
       } finally {
         setBlockingUserId(null);
@@ -55,9 +56,7 @@ export function UsersList({ users, stats }: UsersListProps) {
   if (users.length === 0) {
     return (
       <div className="card grid place-items-center gap-2 py-16 text-center">
-        <span className="text-4xl" aria-hidden>
-          👤
-        </span>
+        <AnimIcon name="user" className="h-10 w-10" aria-hidden />
         <p className="font-bold">কোনো রেজিস্টার্ড ইউজার নেই</p>
         <p className="text-sm text-muted">প্রথম ইউজার registration এর জন্য অপেক্ষা করুন।</p>
       </div>
@@ -111,7 +110,7 @@ export function UsersList({ users, stats }: UsersListProps) {
                         <div>
                           <p className="font-semibold">{user.name}</p>
                           {user.birthdate && (
-                            <p className="text-xs text-muted">🎂 {user.birthdate}</p>
+                            <p className="text-xs text-muted"><AnimIcon name="cake" className="h-4 w-4 shrink-0" /> {user.birthdate}</p>
                           )}
                         </div>
                       </div>
@@ -147,7 +146,7 @@ export function UsersList({ users, stats }: UsersListProps) {
                       </p>
                       {s.flagged > 0 && (
                         <span className="mt-1 inline-flex badge bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                          🚩 {s.flagged} ফেক অর্ডার
+                          <AnimIcon name="flag" className="h-3.5 w-3.5 shrink-0" /> {s.flagged} ফেক অর্ডার
                         </span>
                       )}
                     </td>
