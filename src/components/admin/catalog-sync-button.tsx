@@ -1,9 +1,10 @@
 "use client";
 
 import { useTransition } from "react";
-import { Loader2, RefreshCw, ShoppingBag } from "lucide-react";
+import { Loading01, Refresh01, ShoppingBag01 } from "@animateicons/react/huge";
 import { toast } from "react-toastify";
 import { syncCatalogAction } from "@/lib/actions/admin";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 /**
  * Manual "sync cakes → Meta catalog" trigger. The result summary becomes a
@@ -11,6 +12,8 @@ import { syncCatalogAction } from "@/lib/actions/admin";
  */
 export function CatalogSyncButton({ configured }: { configured: boolean }) {
   const [pending, startTransition] = useTransition();
+  // AnimateIcons refs for catalog sync icon
+  const syncIcon = useAnimIcon();
 
   function sync() {
     if (pending) return;
@@ -47,12 +50,12 @@ export function CatalogSyncButton({ configured }: { configured: boolean }) {
       aria-label="ক্যাটালগে কেক আপডেট করুন"
     >
       {pending ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        <Loading01 ref={syncIcon} className="h-3.5 w-3.5 animate-spin" aria-hidden />
       ) : (
-        <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+        <Refresh01 ref={syncIcon} className="h-3.5 w-3.5" aria-hidden />
       )}
       {pending ? "আপডেট হচ্ছে…" : "ক্যাটালগে আপডেট"}
-      {!configured && <ShoppingBag className="h-3.5 w-3.5 opacity-60" aria-hidden />}
+      {!configured && <ShoppingBag01 className="h-3.5 w-3.5 opacity-60" aria-hidden />}
     </button>
   );
 }

@@ -2,15 +2,18 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Trash2 } from "lucide-react";
+import { Loading01 } from "@animateicons/react/huge";
+import { Delete02 } from "@animateicons/react/huge";
 import { toast } from "react-toastify";
 import { confirmDialog } from "@/lib/confirm";
 import { deletePostAction } from "@/lib/actions/admin";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 /** Delete a blog post (with confirm) from the admin list. */
 export function PostRowActions({ postId, title }: { postId: string; title: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const trashIcon = useAnimIcon();
 
   async function remove() {
     if (pending) return;
@@ -52,9 +55,9 @@ export function PostRowActions({ postId, title }: { postId: string; title: strin
         aria-label={`${title} মুছে ফেলুন`}
       >
         {pending ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          <Loading01 className="h-3.5 w-3.5 animate-spin" aria-hidden />
         ) : (
-          <Trash2 className="h-3.5 w-3.5" aria-hidden />
+          <Delete02 ref={trashIcon} className="h-3.5 w-3.5" aria-hidden />
         )}
         Delete
       </button>

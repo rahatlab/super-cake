@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useActionState } from "react";
 import { useRouter } from "next/navigation";
-import { ImagePlus, Loader2, Save, X } from "lucide-react";
+import { Cancel01, ImageAdd01, Loading01, Save } from "@animateicons/react/huge";
 import { savePostAction, uploadImagesAction, type ActionState } from "@/lib/actions/admin";
 import type { BlogPost } from "@/lib/types";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 const initial: ActionState = {};
 
@@ -14,6 +15,10 @@ export function PostForm({ post }: { post?: BlogPost }) {
   const [cover, setCover] = useState(post?.cover_image ?? "");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  // AnimateIcons refs for post form icons
+  const saveIcon = useAnimIcon();
+  const removeCoverIcon = useAnimIcon();
+  const uploadIcon = useAnimIcon();
 
   useEffect(() => {
     if (!state.success) return;
@@ -160,11 +165,11 @@ export function PostForm({ post }: { post?: BlogPost }) {
             <span className="text-sm font-semibold">সাইটে প্রকাশ করুন</span>
           </label>
 
-          <button type="submit" disabled={pending || uploading} className="btn btn-primary btn-block">
+          <button type="submit" disabled={pending || uploading} className="btn btn-primary btn-block" onMouseEnter={() => saveIcon.current?.startAnimation()} onMouseLeave={() => saveIcon.current?.stopAnimation()}>
             {pending ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              <Loading01 ref={saveIcon} className="h-4 w-4 animate-spin" aria-hidden />
             ) : (
-              <Save className="h-4 w-4" aria-hidden />
+              <Save ref={saveIcon} className="h-4 w-4" aria-hidden />
             )}
             {post ? "আপডেট করুন" : "ব্লগ তৈরি করুন"}
           </button>
@@ -187,14 +192,16 @@ export function PostForm({ post }: { post?: BlogPost }) {
                 onClick={() => setCover("")}
                 className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-white hover:bg-black/80"
                 aria-label="কভার ছবি সরান"
+                onMouseEnter={() => removeCoverIcon.current?.startAnimation()}
+                onMouseLeave={() => removeCoverIcon.current?.stopAnimation()}
               >
-                <X className="h-4 w-4" aria-hidden />
+                <Cancel01 ref={removeCoverIcon} className="h-4 w-4" aria-hidden />
               </button>
             </div>
           ) : (
             <div className="grid aspect-video w-full place-items-center rounded-xl border border-dashed border-line bg-bg text-center">
               <div>
-                <ImagePlus className="mx-auto h-6 w-6 text-muted" aria-hidden />
+                <ImageAdd01 ref={uploadIcon} className="mx-auto h-6 w-6 text-muted" aria-hidden />
                 <p className="mt-1 text-[11px] text-muted">কোনো ছবি নেই</p>
               </div>
             </div>
@@ -202,9 +209,9 @@ export function PostForm({ post }: { post?: BlogPost }) {
 
           <label className="btn btn-soft btn-sm w-full cursor-pointer">
             {uploading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              <Loading01 className="h-3.5 w-3.5 animate-spin" aria-hidden />
             ) : (
-              <ImagePlus className="h-3.5 w-3.5" aria-hidden />
+              <ImageAdd01 ref={uploadIcon} className="h-3.5 w-3.5" aria-hidden />
             )}
             ছবি আপলোড
             <input

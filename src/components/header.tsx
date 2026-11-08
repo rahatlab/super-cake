@@ -4,9 +4,11 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { LayoutDashboard, LogIn, Menu, ShoppingBag, X } from "lucide-react";
+import { LayoutDashboard, Login01, Menu01, ShoppingBag01 } from "@animateicons/react/huge";
+import { X } from "lucide-react";
 import { ThemeToggle } from "./theme-toggle";
 import { useCart } from "@/components/cart/cart-context";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 const NAV = [
   { href: "/", label: "হোম" },
@@ -58,6 +60,11 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { user, ready } = useCurrentUser();
+  // AnimateIcons refs for interactive header icons
+  const cartIcon = useAnimIcon();
+  const dashIcon = useAnimIcon();
+  const loginIcon = useAnimIcon();
+  const menuIcon = useAnimIcon();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -124,8 +131,10 @@ export function Header() {
             onClick={() => setOpen(true)}
             aria-label={`কার্ট, ${count} টি আইটেম`}
             className="relative grid h-10 w-10 place-items-center rounded-full border border-line bg-surface transition-colors hover:border-brand/50"
+            onMouseEnter={() => cartIcon.current?.startAnimation()}
+            onMouseLeave={() => cartIcon.current?.stopAnimation()}
           >
-            <ShoppingBag className="h-[18px] w-[18px]" />
+            <ShoppingBag01 ref={cartIcon} className="h-[18px] w-[18px]" />
             <AnimatePresence>
               {count > 0 && (
                 <motion.span
@@ -151,13 +160,15 @@ export function Header() {
             <Link
               href={isAdmin ? "/admin" : "/account"}
               className="btn btn-soft btn-sm hidden sm:inline-flex"
+              onMouseEnter={() => dashIcon.current?.startAnimation()}
+              onMouseLeave={() => dashIcon.current?.stopAnimation()}
             >
-              <LayoutDashboard className="h-4 w-4" />
+              <LayoutDashboard ref={dashIcon} className="h-4 w-4" />
               {isAdmin ? "Dashboard" : user.name.split(" ")[0]}
             </Link>
           ) : (
-            <Link href="/login" className="btn btn-ghost btn-sm hidden sm:inline-flex">
-              <LogIn className="h-4 w-4" />
+            <Link href="/login" className="btn btn-ghost btn-sm hidden sm:inline-flex" onMouseEnter={() => loginIcon.current?.startAnimation()} onMouseLeave={() => loginIcon.current?.stopAnimation()}>
+              <Login01 ref={loginIcon} className="h-4 w-4" />
               লগইন
             </Link>
           )}
@@ -167,8 +178,10 @@ export function Header() {
             aria-label="Menu"
             aria-expanded={menuOpen}
             className="grid h-10 w-10 place-items-center rounded-full border border-line bg-surface lg:hidden"
+            onMouseEnter={() => menuIcon.current?.startAnimation()}
+            onMouseLeave={() => menuIcon.current?.stopAnimation()}
           >
-            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            {menuOpen ? <X className="h-5 w-5" /> : <Menu01 ref={menuIcon} className="h-5 w-5" />}
           </button>
         </div>
       </div>

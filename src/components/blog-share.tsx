@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { Check, Copy } from "@animateicons/react/huge";
 import { AnimatePresence, motion } from "framer-motion";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 export function BlogShare({ title }: { title: string }) {
   const [copied, setCopied] = useState(false);
+  const shareIcon = useAnimIcon();
 
   const share = async () => {
     // Read the URL at click time: window is not available during SSR, and this
@@ -39,7 +41,7 @@ export function BlogShare({ title }: { title: string }) {
             exit={{ scale: 0.7, opacity: 0 }}
             className="inline-flex items-center gap-1.5 text-success"
           >
-            <Check className="h-3.5 w-3.5" /> কপি হয়েছে
+            <Check ref={shareIcon} className="h-3.5 w-3.5" /> কপি হয়েছে
           </motion.span>
         ) : (
           <motion.span
@@ -49,7 +51,7 @@ export function BlogShare({ title }: { title: string }) {
             exit={{ scale: 0.7, opacity: 0 }}
             className="inline-flex items-center gap-1.5"
           >
-            <Copy className="h-3.5 w-3.5" />
+            <Copy ref={shareIcon} className="h-3.5 w-3.5" />
             শেয়ার
           </motion.span>
         )}

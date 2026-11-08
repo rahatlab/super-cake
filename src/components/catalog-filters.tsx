@@ -1,6 +1,8 @@
 "use client";
 
-import { Search, SlidersHorizontal, X } from "lucide-react";
+import { Search, SlidersHorizontal } from "@animateicons/react/huge";
+import { Cancel01 } from "@animateicons/react/huge";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 interface Opt {
   value: string;
@@ -36,6 +38,8 @@ export function CatalogFilters({
 }) {
   const set = (patch: Partial<CatalogState>) => onChange({ ...value, ...patch });
   const hasFilter = Boolean(value.occasion || value.category || value.q.trim());
+  // AnimateIcons refs for filter icons
+  const clearIcon = useAnimIcon();
 
   return (
     <div className="space-y-3">
@@ -112,8 +116,10 @@ export function CatalogFilters({
             type="button"
             onClick={() => onChange({ q: "", occasion: "", category: "", sort: "popular" })}
             className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-danger"
+            onMouseEnter={() => clearIcon.current?.startAnimation()}
+            onMouseLeave={() => clearIcon.current?.stopAnimation()}
           >
-            <X className="h-3.5 w-3.5" /> ফিল্টার মুছুন
+            <Cancel01 ref={clearIcon} className="h-3.5 w-3.5" /> ফিল্টার মুছুন
           </button>
         )}
       </div>

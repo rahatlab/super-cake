@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { KeyRound, Loader2, Mail, MessageCircle } from "lucide-react";
+import { Key01, Loading01, Mail01, Message01 } from "@animateicons/react/huge";
 import { resetPasswordAction, resetPasswordByEmailAction, requestEmailOtpAction, verifyEmailOtpAction, type AuthState } from "@/lib/actions/auth";
 import { OtpVerify } from "@/components/auth/otp-verify";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 type ResetMethod = "phone" | "email";
 
@@ -22,6 +23,11 @@ export function ResetPasswordForm() {
   const [emailSuccess, setEmailSuccess] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [isPending, startTransition] = useTransition();
+  // AnimateIcons refs for reset form interactive icons
+  const emailMethodIcon = useAnimIcon();
+  const phoneMethodIcon = useAnimIcon();
+  const sendIcon = useAnimIcon();
+  const saveIcon = useAnimIcon();
 
   const handleSendEmailOtp = async () => {
     if (!email || !email.includes("@")) {
@@ -107,8 +113,10 @@ export function ResetPasswordForm() {
           className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${
             method === "email" ? "bg-brand text-white" : "text-muted hover:text-fg"
           }`}
+          onMouseEnter={() => emailMethodIcon.current?.startAnimation()}
+          onMouseLeave={() => emailMethodIcon.current?.stopAnimation()}
         >
-          <Mail className="h-4 w-4" /> ইমেইল
+          <Mail01 ref={emailMethodIcon} className="h-4 w-4" /> ইমেইল
         </button>
         <button
           type="button"
@@ -116,8 +124,10 @@ export function ResetPasswordForm() {
           className={`flex-1 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold transition-all ${
             method === "phone" ? "bg-brand text-white" : "text-muted hover:text-fg"
           }`}
+          onMouseEnter={() => phoneMethodIcon.current?.startAnimation()}
+          onMouseLeave={() => phoneMethodIcon.current?.stopAnimation()}
         >
-          <MessageCircle className="h-4 w-4" /> ফোন
+          <Message01 ref={phoneMethodIcon} className="h-4 w-4" /> ফোন
         </button>
       </div>
 
@@ -164,8 +174,10 @@ export function ResetPasswordForm() {
                 onClick={handleSendEmailOtp}
                 disabled={sendingEmail || !email}
                 className="btn btn-soft btn-sm w-full"
+                onMouseEnter={() => sendIcon.current?.startAnimation()}
+                onMouseLeave={() => sendIcon.current?.stopAnimation()}
               >
-                {sendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                {sendingEmail ? <Loading01 ref={sendIcon} className="h-4 w-4 animate-spin" /> : <Mail01 ref={sendIcon} className="h-4 w-4" />}
                 ইমেইলে কোড নিন
               </button>
             ) : (
@@ -197,7 +209,7 @@ export function ResetPasswordForm() {
                     disabled={verifyingEmail || emailCode.length !== 6}
                     className="btn btn-soft shrink-0"
                   >
-                    {verifyingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : "যাচাই"}
+                    {verifyingEmail ? <Loading01 className="h-4 w-4 animate-spin" /> : "যাচাই"}
                   </button>
                 </div>
 
@@ -286,14 +298,16 @@ export function ResetPasswordForm() {
           type="submit"
           disabled={isPending || !verified}
           className="btn btn-primary btn-lg btn-block"
+          onMouseEnter={() => saveIcon.current?.startAnimation()}
+          onMouseLeave={() => saveIcon.current?.stopAnimation()}
         >
           {isPending ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin" /> সেভ হচ্ছে…
+              <Loading01 ref={saveIcon} className="h-4 w-4 animate-spin" /> সেভ হচ্ছে…
             </>
           ) : (
             <>
-              <KeyRound className="h-4 w-4" /> নতুন পাসওয়ার্ড সেভ করুন
+              <Key01 ref={saveIcon} className="h-4 w-4" /> নতুন পাসওয়ার্ড সেভ করুন
             </>
           )}
         </button>

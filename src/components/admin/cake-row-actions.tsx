@@ -2,10 +2,13 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Power, Trash2 } from "lucide-react";
+import { Loading01 } from "@animateicons/react/huge";
+import { Delete02 } from "@animateicons/react/huge";
+import { Power } from "lucide-react";
 import { toast } from "react-toastify";
 import { confirmDialog } from "@/lib/confirm";
 import { deleteCakeAction, toggleCakeActiveAction } from "@/lib/actions/admin";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 /** Inline availability toggle + delete (with confirm) for the cake list. */
 export function CakeRowActions({
@@ -19,6 +22,9 @@ export function CakeRowActions({
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  // AnimateIcons refs for cake row actions
+  const toggleIcon = useAnimIcon();
+  const trashIcon = useAnimIcon();
 
   function toggle() {
     if (pending) return;
@@ -86,7 +92,7 @@ export function CakeRowActions({
         title={isActive ? "বন্ধ করুন" : "চালু করুন"}
       >
         {pending ? (
-          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          <Loading01 ref={toggleIcon} className="h-4 w-4 animate-spin" aria-hidden />
         ) : (
           <Power className="h-4 w-4" aria-hidden />
         )}
@@ -98,8 +104,10 @@ export function CakeRowActions({
         className="btn btn-ghost btn-sm text-danger"
         aria-label="মুছুন"
         title="মুছুন"
+        onMouseEnter={() => trashIcon.current?.startAnimation()}
+        onMouseLeave={() => trashIcon.current?.stopAnimation()}
       >
-        <Trash2 className="h-4 w-4" aria-hidden />
+        <Delete02 ref={trashIcon} className="h-4 w-4" aria-hidden />
       </button>
     </div>
   );

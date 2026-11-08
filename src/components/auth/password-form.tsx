@@ -1,8 +1,9 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { KeyRound, Loader2 } from "lucide-react";
+import { Key01, Loading01 } from "@animateicons/react/huge";
 import { changePasswordAction, type AuthState } from "@/lib/actions/auth";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 const initial: AuthState = {};
 
@@ -17,12 +18,15 @@ export function PasswordForm() {
     },
     initial,
   );
+  // AnimateIcons refs for password form icons
+  const headerKeyIcon = useAnimIcon();
+  const submitKeyIcon = useAnimIcon();
 
   return (
     <section className="card p-5" aria-label="পাসওয়ার্ড বদলান">
       <div className="flex items-center gap-2.5">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-brand/10 text-brand-strong">
-          <KeyRound className="h-4 w-4" aria-hidden />
+          <Key01 ref={headerKeyIcon} className="h-4 w-4" aria-hidden />
         </span>
         <div>
           <h2 className="text-base font-extrabold">পাসওয়ার্ড বদলান</h2>
@@ -85,11 +89,11 @@ export function PasswordForm() {
           />
         </div>
         <div className="sm:col-span-3">
-          <button type="submit" disabled={pending} className="btn btn-soft btn-sm">
+          <button type="submit" disabled={pending} className="btn btn-soft btn-sm" onMouseEnter={() => submitKeyIcon.current?.startAnimation()} onMouseLeave={() => submitKeyIcon.current?.stopAnimation()}>
             {pending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              <Loading01 ref={submitKeyIcon} className="h-3.5 w-3.5 animate-spin" aria-hidden />
             ) : (
-              <KeyRound className="h-3.5 w-3.5" aria-hidden />
+              <Key01 ref={submitKeyIcon} className="h-3.5 w-3.5" aria-hidden />
             )}
             পাসওয়ার্ড আপডেট করুন
           </button>

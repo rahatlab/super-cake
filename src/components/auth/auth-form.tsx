@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useActionState, useState, type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Eye, EyeOff, Loader2, LogIn, UserPlus } from "lucide-react";
+import { Eye, EyeOff, Loading01, Login01, UserAdd01 } from "@animateicons/react/huge";
 import { loginAction, registerAction, type AuthState } from "@/lib/actions/auth";
 import { OtpVerify } from "@/components/auth/otp-verify";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 const initialState: AuthState = {};
 
@@ -26,6 +27,9 @@ export function AuthForm({
 
   const isLogin = mode === "login";
   const phoneReady = phone.replace(/\D/g, "").length >= 10;
+  // AnimateIcons refs for auth form interactive icons
+  const eyeIcon = useAnimIcon();
+  const submitIcon = useAnimIcon();
 
   return (
     <div className="relative">
@@ -157,8 +161,10 @@ export function AuthForm({
                 onClick={() => setShow((v) => !v)}
                 aria-label={show ? "পাসওয়ার্ড লুকান" : "পাসওয়ার্ড দেখুন"}
                 className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-muted hover:text-fg"
+                onMouseEnter={() => eyeIcon.current?.startAnimation()}
+                onMouseLeave={() => eyeIcon.current?.stopAnimation()}
               >
-                {show ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {show ? <EyeOff ref={eyeIcon} className="h-4 w-4" /> : <Eye ref={eyeIcon} className="h-4 w-4" />}
               </button>
             </div>
             {isLogin && (
@@ -174,18 +180,20 @@ export function AuthForm({
             type="submit"
             disabled={pending || (!isLogin && !phoneVerified)}
             className="btn btn-primary btn-lg btn-block"
+            onMouseEnter={() => submitIcon.current?.startAnimation()}
+            onMouseLeave={() => submitIcon.current?.stopAnimation()}
           >
             {pending ? (
               <>
-                <Loader2 className="h-4 w-4 animate-spin" /> এক মুহূর্ত…
+                <Loading01 ref={submitIcon} className="h-4 w-4 animate-spin" /> এক মুহূর্ত…
               </>
             ) : isLogin ? (
               <>
-                <LogIn className="h-4 w-4" /> লগইন করুন
+                <Login01 ref={submitIcon} className="h-4 w-4" /> লগইন করুন
               </>
             ) : (
               <>
-                <UserPlus className="h-4 w-4" /> রেজিস্টার করুন
+                <UserAdd01 ref={submitIcon} className="h-4 w-4" /> রেজিস্টার করুন
               </>
             )}
           </button>

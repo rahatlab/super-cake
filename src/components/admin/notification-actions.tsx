@@ -2,13 +2,15 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, CheckCheck, Loader2 } from "lucide-react";
+import { Check, CheckCheck, Loading01 } from "@animateicons/react/huge";
 import { toast } from "react-toastify";
 import { markAllNotificationsReadAction, markNotificationReadAction } from "@/lib/actions/admin";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 export function MarkReadButton({ id }: { id: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const readIcon = useAnimIcon();
 
   return (
     <button
@@ -29,11 +31,13 @@ export function MarkReadButton({ id }: { id: string }) {
       }
       className="btn btn-ghost btn-sm"
       aria-label="পড়া হিসেবে মার্ক করুন"
+      onMouseEnter={() => readIcon.current?.startAnimation()}
+      onMouseLeave={() => readIcon.current?.stopAnimation()}
     >
       {pending ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        <Loading01 ref={readIcon} className="h-3.5 w-3.5 animate-spin" aria-hidden />
       ) : (
-        <Check className="h-3.5 w-3.5" aria-hidden />
+        <Check ref={readIcon} className="h-3.5 w-3.5" aria-hidden />
       )}
       পড়া হয়েছে
     </button>
@@ -43,6 +47,7 @@ export function MarkReadButton({ id }: { id: string }) {
 export function MarkAllReadButton({ unread }: { unread: number }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const checkAllIcon = useAnimIcon();
 
   if (unread === 0) return null;
 
@@ -74,11 +79,13 @@ export function MarkAllReadButton({ unread }: { unread: number }) {
           })
         }
         className="btn btn-soft btn-sm"
+        onMouseEnter={() => checkAllIcon.current?.startAnimation()}
+        onMouseLeave={() => checkAllIcon.current?.stopAnimation()}
       >
         {pending ? (
-          <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+          <Loading01 ref={checkAllIcon} className="h-3.5 w-3.5 animate-spin" aria-hidden />
         ) : (
-          <CheckCheck className="h-3.5 w-3.5" aria-hidden />
+          <CheckCheck ref={checkAllIcon} className="h-3.5 w-3.5" aria-hidden />
         )}
         সব পড়া হয়েছে
       </button>

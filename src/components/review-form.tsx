@@ -4,10 +4,12 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRef, useState, useActionState, type ChangeEvent } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ImagePlus, Loader2, PartyPopper, Send, Star, X } from "lucide-react";
+import { Cancel01, ImageAdd01, Loading01, Send, Star } from "@animateicons/react/huge";
+import { PartyPopper } from "lucide-react";
 import { submitReviewAction, type ReviewState } from "@/lib/actions/order";
 import { StarInput } from "@/components/star-rating";
 import { MAX_REVIEW_PHOTOS } from "@/lib/constants";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 const initialState: ReviewState = {};
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -33,6 +35,10 @@ export function ReviewForm({
   const [photos, setPhotos] = useState<Picked[]>([]);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  // AnimateIcons refs for review form icons
+  const addPhotoIcon = useAnimIcon();
+  const removePhotoIcon = useAnimIcon();
+  const submitIcon = useAnimIcon();
 
   /** Keep the native <input type="file"> in sync with our removable list. */
   const setFiles = (next: Picked[]) => {
@@ -176,8 +182,10 @@ export function ReviewForm({
                   onClick={() => removePhoto(i)}
                   aria-label={`ছবি ${i + 1} মুছুন`}
                   className="absolute right-1 top-1 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-white transition-opacity hover:bg-black/80"
+                  onMouseEnter={() => removePhotoIcon.current?.startAnimation()}
+                  onMouseLeave={() => removePhotoIcon.current?.stopAnimation()}
                 >
-                  <X className="h-3.5 w-3.5" />
+                  <Cancel01 ref={removePhotoIcon} className="h-3.5 w-3.5" />
                 </button>
               </div>
             ))}
@@ -189,8 +197,10 @@ export function ReviewForm({
           onClick={() => inputRef.current?.click()}
           disabled={photos.length >= MAX_REVIEW_PHOTOS}
           className="btn btn-ghost btn-sm"
+          onMouseEnter={() => addPhotoIcon.current?.startAnimation()}
+          onMouseLeave={() => addPhotoIcon.current?.stopAnimation()}
         >
-          <ImagePlus className="h-4 w-4" />
+          <ImageAdd01 ref={addPhotoIcon} className="h-4 w-4" />
           {photos.length ? "আরও ছবি যোগ করুন" : "ছবি যোগ করুন"}
         </button>
         <p className="mt-1.5 text-[11px] text-muted">
@@ -213,15 +223,15 @@ export function ReviewForm({
         )}
       </AnimatePresence>
 
-      <button type="submit" disabled={pending} className="btn btn-primary btn-lg btn-block">
+      <button type="submit" disabled={pending} className="btn btn-primary btn-lg btn-block" onMouseEnter={() => submitIcon.current?.startAnimation()} onMouseLeave={() => submitIcon.current?.stopAnimation()}>
         {pending ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin" /> পাঠানো হচ্ছে…
+            <Loading01 ref={submitIcon} className="h-4 w-4 animate-spin" /> পাঠানো হচ্ছে…
           </>
         ) : (
           <>
-            <Send className="h-4 w-4" /> রিভিউ জমা দিন
-            <Star className="h-4 w-4 fill-current" />
+            <Send ref={submitIcon} className="h-4 w-4" /> রিভিউ জমা দিন
+            <Star ref={submitIcon} className="h-4 w-4 fill-current" />
           </>
         )}
       </button>

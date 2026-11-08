@@ -3,12 +3,19 @@
 import Link from "next/link";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { Minus, Plus, ShoppingBag, Trash2, X } from "lucide-react";
+import { Add01, Cancel01, Delete02, MinusSign, ShoppingBag01 } from "@animateicons/react/huge";
 import { useCart } from "./cart-context";
 import { formatBDT, weightLabel } from "@/lib/utils";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 export function CartDrawer() {
   const { items, open, setOpen, subtotal, setQty, remove, count } = useCart();
+  // AnimateIcons refs for cart icons
+  const cartBagIcon = useAnimIcon();
+  const closeIcon = useAnimIcon();
+  const trashIcon = useAnimIcon();
+  const minusIcon = useAnimIcon();
+  const plusIcon = useAnimIcon();
 
   return (
     <AnimatePresence>
@@ -33,7 +40,7 @@ export function CartDrawer() {
           >
             <header className="flex items-center justify-between border-b border-line px-5 py-4">
               <div className="flex items-center gap-2">
-                <ShoppingBag className="h-5 w-5 text-brand" />
+                <ShoppingBag01 ref={cartBagIcon} className="h-5 w-5 text-brand" />
                 <h2 className="text-base font-bold">আপনার কার্ট</h2>
                 <span className="badge bg-brand/12 text-brand-strong">{count} item</span>
               </div>
@@ -41,8 +48,10 @@ export function CartDrawer() {
                 onClick={() => setOpen(false)}
                 aria-label="Close cart"
                 className="grid h-9 w-9 place-items-center rounded-full border border-line hover:bg-fg/5"
+                onMouseEnter={() => closeIcon.current?.startAnimation()}
+                onMouseLeave={() => closeIcon.current?.stopAnimation()}
               >
-                <X className="h-4 w-4" />
+                <Cancel01 ref={closeIcon} className="h-4 w-4" />
               </button>
             </header>
 
@@ -84,24 +93,30 @@ export function CartDrawer() {
                           onClick={() => remove(it.cake_id, it.weight)}
                           aria-label="Remove"
                           className="text-muted transition-colors hover:text-danger"
+                          onMouseEnter={() => trashIcon.current?.startAnimation()}
+                          onMouseLeave={() => trashIcon.current?.stopAnimation()}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Delete02 ref={trashIcon} className="h-4 w-4" />
                         </button>
                         <div className="flex items-center gap-1.5 rounded-full border border-line px-1">
                           <button
                             onClick={() => setQty(it.cake_id, it.weight, it.quantity - 1)}
                             aria-label="Decrease"
                             className="grid h-6 w-6 place-items-center rounded-full hover:bg-fg/5"
+                            onMouseEnter={() => minusIcon.current?.startAnimation()}
+                            onMouseLeave={() => minusIcon.current?.stopAnimation()}
                           >
-                            <Minus className="h-3 w-3" />
+                            <MinusSign ref={minusIcon} className="h-3 w-3" />
                           </button>
                           <span className="w-4 text-center text-xs font-bold">{it.quantity}</span>
                           <button
                             onClick={() => setQty(it.cake_id, it.weight, it.quantity + 1)}
                             aria-label="Increase"
                             className="grid h-6 w-6 place-items-center rounded-full hover:bg-fg/5"
+                            onMouseEnter={() => plusIcon.current?.startAnimation()}
+                            onMouseLeave={() => plusIcon.current?.stopAnimation()}
                           >
-                            <Plus className="h-3 w-3" />
+                            <Add01 ref={plusIcon} className="h-3 w-3" />
                           </button>
                         </div>
                       </div>

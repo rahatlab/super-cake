@@ -2,12 +2,13 @@
 
 import { useActionState, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Megaphone, Save, Trash2 } from "lucide-react";
+import { Delete02, Loading01, Megaphone01, Save } from "@animateicons/react/huge";
 import { toast } from "react-toastify";
 import { confirmDialog } from "@/lib/confirm";
 import type { Banner } from "@/lib/types";
 import { cn, formatDateTime } from "@/lib/utils";
 import { deleteBannerAction, saveBannerAction, type ActionState } from "@/lib/actions/admin";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 const initial: ActionState = {};
 
@@ -27,6 +28,9 @@ export function BannerManager({ banners }: { banners: Banner[] }) {
   const [state, formAction, pending] = useActionState(saveBannerAction, initial);
   const [rowMsg, setRowMsg] = useState<string | null>(null);
   const [rowPending, startRow] = useTransition();
+  // AnimateIcons refs for banner manager icons
+  const saveIcon = useAnimIcon();
+  const trashIcon = useAnimIcon();
 
   async function remove(b: Banner) {
     const ok = await confirmDialog({
@@ -65,7 +69,7 @@ export function BannerManager({ banners }: { banners: Banner[] }) {
       <section className="card p-5">
         <div className="mb-4 flex items-center gap-2">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand/10 text-brand-strong">
-            <Megaphone className="h-4 w-4" aria-hidden />
+            <Megaphone01 className="h-4 w-4" aria-hidden />
           </span>
           <div>
             <h2 className="text-base font-extrabold">হোমপেজ অফার ব্যানার</h2>
@@ -164,11 +168,11 @@ export function BannerManager({ banners }: { banners: Banner[] }) {
             <span className="text-sm font-semibold">ব্যানারটি চালু রাখুন</span>
           </label>
 
-          <button type="submit" disabled={pending} className="btn btn-primary btn-block">
+          <button type="submit" disabled={pending} className="btn btn-primary btn-block" onMouseEnter={() => saveIcon.current?.startAnimation()} onMouseLeave={() => saveIcon.current?.stopAnimation()}>
             {pending ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              <Loading01 ref={saveIcon} className="h-4 w-4 animate-spin" aria-hidden />
             ) : (
-              <Save className="h-4 w-4" aria-hidden />
+              <Save ref={saveIcon} className="h-4 w-4" aria-hidden />
             )}
             {current ? "ব্যানার আপডেট করুন" : "ব্যানার তৈরি করুন"}
           </button>
@@ -237,8 +241,10 @@ export function BannerManager({ banners }: { banners: Banner[] }) {
                     disabled={rowPending}
                     className="btn btn-ghost btn-sm text-danger hover:bg-danger/10"
                     aria-label={`${b.title} মুছে ফেলুন`}
+                    onMouseEnter={() => trashIcon.current?.startAnimation()}
+                    onMouseLeave={() => trashIcon.current?.stopAnimation()}
                   >
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                    <Delete02 ref={trashIcon} className="h-3.5 w-3.5" aria-hidden />
                   </button>
                 </li>
               ))}

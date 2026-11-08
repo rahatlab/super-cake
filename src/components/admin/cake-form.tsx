@@ -5,12 +5,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { Eye, Loader2, Plus, Trash2 } from "lucide-react";
+import { Add01, Delete02, Eye, Loading01 } from "@animateicons/react/huge";
 import { CATEGORIES, FLAVORS, MAX_CAKE_IMAGES, OCCASIONS, WEIGHTS } from "@/lib/constants";
 import { formatBDT, weightLabel } from "@/lib/utils";
 import { saveCakeAction, uploadImagesAction, type ActionState } from "@/lib/actions/admin";
 import { compressImageFile } from "@/lib/compress-image";
 import type { Cake, Occasion } from "@/lib/types";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 interface SizeRow {
   weight: number;
@@ -49,6 +50,9 @@ export function CakeForm({ cake }: { cake?: Cake }) {
    * the second click is rejected in the same tick.
    */
   const submitLock = useRef(false);
+  // AnimateIcons refs for cake form icons
+  const submitIcon = useAnimIcon();
+  const removeImageIcon = useAnimIcon();
 
   // The action has settled (state is a fresh object per call) — allow saving
   // again. Early validation failures release the lock in onSubmit's finally.
@@ -355,8 +359,10 @@ export function CakeForm({ cake }: { cake?: Cake }) {
                     onClick={() => removeImage(url)}
                     aria-label={`ছবি মুছুন ${url}`}
                     className="absolute -right-2 -top-2 grid h-6 w-6 place-items-center rounded-full bg-danger text-white shadow-soft"
+                    onMouseEnter={() => removeImageIcon.current?.startAnimation()}
+                    onMouseLeave={() => removeImageIcon.current?.stopAnimation()}
                   >
-                    <Trash2 className="h-3 w-3" aria-hidden />
+                    <Delete02 ref={removeImageIcon} className="h-3 w-3" aria-hidden />
                   </button>
                 </div>
               ))}
@@ -433,8 +439,8 @@ export function CakeForm({ cake }: { cake?: Cake }) {
 
         {/* ---------------- submit ---------------- */}
         <div className="lg:col-span-2">
-          <button type="submit" disabled={busy} className="btn btn-primary btn-lg btn-block">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : cake ? <Eye className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
+          <button type="submit" disabled={busy} className="btn btn-primary btn-lg btn-block" onMouseEnter={() => submitIcon.current?.startAnimation()} onMouseLeave={() => submitIcon.current?.stopAnimation()}>
+            {busy ? <Loading01 ref={submitIcon} className="h-4 w-4 animate-spin" aria-hidden /> : cake ? <Eye ref={submitIcon} className="h-4 w-4" aria-hidden /> : <Add01 ref={submitIcon} className="h-4 w-4" aria-hidden />}
             {uploading ? "ছবি আপলোড হচ্ছে…" : pending ? "সেভ হচ্ছে…" : cake ? "কেক আপডেট করুন" : "কেক সেভ করুন"}
           </button>
         </div>

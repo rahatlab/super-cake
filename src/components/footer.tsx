@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { Location01, Mail01, Phone } from "@animateicons/react/huge";
 import type { Settings } from "@/lib/types";
 import { waLink } from "@/lib/utils";
 
@@ -33,10 +33,10 @@ export function Footer({ settings }: { settings: Settings }) {
               <Phone className="h-4 w-4" /> {settings.phone}
             </a>
             <p className="flex items-center gap-2">
-              <Mail className="h-4 w-4" /> {settings.email}
+              <Mail01 className="h-4 w-4" /> {settings.email}
             </p>
             <p className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" /> {settings.address}
+              <Location01 className="h-4 w-4" /> {settings.address}
             </p>
           </div>
         </div>

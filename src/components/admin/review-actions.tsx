@@ -2,15 +2,19 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Loader2, Trash2 } from "lucide-react";
+import { Check, Loading01 } from "@animateicons/react/huge";
+import { Delete02 } from "@animateicons/react/huge";
 import { toast } from "react-toastify";
 import { confirmDialog } from "@/lib/confirm";
 import { moderateReviewAction } from "@/lib/actions/admin";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 /** Approve (publish) or delete a customer review. */
 export function ReviewActions({ reviewId, isApproved }: { reviewId: string; isApproved: boolean }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+  const approveIcon = useAnimIcon();
+  const trashIcon = useAnimIcon();
 
   function approve() {
     if (pending) return;
@@ -78,9 +82,9 @@ export function ReviewActions({ reviewId, isApproved }: { reviewId: string; isAp
             aria-label="রিভিউ approve করুন"
           >
             {pending ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+              <Loading01 ref={approveIcon} className="h-3.5 w-3.5 animate-spin" aria-hidden />
             ) : (
-              <Check className="h-3.5 w-3.5" aria-hidden />
+              <Check ref={approveIcon} className="h-3.5 w-3.5" aria-hidden />
             )}
             Approve
           </button>
@@ -91,11 +95,13 @@ export function ReviewActions({ reviewId, isApproved }: { reviewId: string; isAp
           disabled={pending}
           className="btn btn-sm btn-ghost text-danger hover:bg-danger/10"
           aria-label="রিভিউ মুছে ফেলুন"
+          onMouseEnter={() => trashIcon.current?.startAnimation()}
+          onMouseLeave={() => trashIcon.current?.stopAnimation()}
         >
           {pending ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+            <Loading01 ref={trashIcon} className="h-3.5 w-3.5 animate-spin" aria-hidden />
           ) : (
-            <Trash2 className="h-3.5 w-3.5" aria-hidden />
+            <Delete02 ref={trashIcon} className="h-3.5 w-3.5" aria-hidden />
           )}
           Delete
         </button>

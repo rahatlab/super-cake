@@ -3,7 +3,8 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Expand, X } from "lucide-react";
+import { Cancel01, ChevronLeft, ChevronRight, Expand } from "@animateicons/react/huge";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 export function CakeGallery({
   images,
@@ -19,6 +20,13 @@ export function CakeGallery({
   const list = images.length ? images : ["/cakes/custom-placeholder.svg"];
   const [index, setIndex] = useState(0);
   const [zoom, setZoom] = useState(false);
+  // AnimateIcons refs for gallery navigation icons
+  const expandIcon = useAnimIcon();
+  const prevIcon = useAnimIcon();
+  const nextIcon = useAnimIcon();
+  const closeIcon = useAnimIcon();
+  const lightboxPrevIcon = useAnimIcon();
+  const lightboxNextIcon = useAnimIcon();
 
   const fitClass = fit === "contain" ? "object-contain" : "object-cover";
   const posClass =
@@ -69,8 +77,10 @@ export function CakeGallery({
           onClick={() => setZoom(true)}
           aria-label="বড় করে দেখুন"
           className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-surface/90 opacity-0 shadow-soft transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+          onMouseEnter={() => expandIcon.current?.startAnimation()}
+          onMouseLeave={() => expandIcon.current?.stopAnimation()}
         >
-          <Expand className="h-4 w-4" />
+          <Expand ref={expandIcon} className="h-4 w-4" />
         </button>
 
         {list.length > 1 && (
@@ -79,15 +89,19 @@ export function CakeGallery({
               onClick={() => go(-1)}
               aria-label="আগের ছবি"
               className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-surface/90 opacity-0 shadow-soft transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+              onMouseEnter={() => prevIcon.current?.startAnimation()}
+              onMouseLeave={() => prevIcon.current?.stopAnimation()}
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft ref={prevIcon} className="h-5 w-5" />
             </button>
             <button
               onClick={() => go(1)}
               aria-label="পরের ছবি"
               className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-surface/90 opacity-0 shadow-soft transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+              onMouseEnter={() => nextIcon.current?.startAnimation()}
+              onMouseLeave={() => nextIcon.current?.stopAnimation()}
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight ref={nextIcon} className="h-5 w-5" />
             </button>
           </>
         )}
@@ -130,14 +144,16 @@ export function CakeGallery({
             className="fixed inset-0 z-50 grid place-items-center bg-black/90 p-4"
             onClick={() => setZoom(false)}
           >
-            <motion.button
-              initial={{ scale: 0.7, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.7, opacity: 0 }}
-              aria-label="বন্ধ করুন"
-              className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white"
-            >
-              <X className="h-5 w-5" />
+              <motion.button
+                initial={{ scale: 0.7, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.7, opacity: 0 }}
+                aria-label="বন্ধ করুন"
+                className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/10 text-white"
+                onMouseEnter={() => closeIcon.current?.startAnimation()}
+                onMouseLeave={() => closeIcon.current?.stopAnimation()}
+              >
+                <Cancel01 ref={closeIcon} className="h-5 w-5" />
             </motion.button>
 
             <motion.div
@@ -165,8 +181,10 @@ export function CakeGallery({
                     go(-1);
                   }}
                   className="btn btn-sm bg-white/10 text-white backdrop-blur"
+                  onMouseEnter={() => lightboxPrevIcon.current?.startAnimation()}
+                  onMouseLeave={() => lightboxPrevIcon.current?.stopAnimation()}
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft ref={lightboxPrevIcon} className="h-4 w-4" />
                 </button>
                 <button
                   onClick={(e) => {
@@ -174,8 +192,10 @@ export function CakeGallery({
                     go(1);
                   }}
                   className="btn btn-sm bg-white/10 text-white backdrop-blur"
+                  onMouseEnter={() => lightboxNextIcon.current?.startAnimation()}
+                  onMouseLeave={() => lightboxNextIcon.current?.stopAnimation()}
                 >
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronRight ref={lightboxNextIcon} className="h-4 w-4" />
                 </button>
               </div>
             )}

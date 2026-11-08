@@ -1,6 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, MessageCircle, Sparkles } from "lucide-react";
+import { ArrowRight02, Message01, Sparkles } from "@animateicons/react/huge";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 const HEADLINE = ["প্রতিটি", "উদ্‌যাপনে", "মিষ্টি", "হোক"];
 
@@ -31,6 +34,9 @@ export function Hero({
   rating?: number;
   reviewCount?: number;
 }) {
+  // AnimateIcons refs for hero action icons
+  const orderIcon = useAnimIcon();
+  const whatsappIcon = useAnimIcon();
   return (
     <section className="relative overflow-hidden">
       {/* animated sprinkles */}
@@ -94,9 +100,9 @@ export function Hero({
             className="mt-7 flex animate-rise-up flex-wrap items-center gap-3"
             style={{ animationDelay: "0.68s" }}
           >
-            <Link href="/cakes" className="btn btn-primary btn-lg group">
+            <Link href="/cakes" className="btn btn-primary btn-lg group" onMouseEnter={() => orderIcon.current?.startAnimation()} onMouseLeave={() => orderIcon.current?.stopAnimation()}>
               এখনই অর্ডার করুন
-              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              <ArrowRight02 ref={orderIcon} className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link href="/custom-order" className="btn btn-ghost btn-lg">
               🎨 Custom Cake বানান
@@ -106,8 +112,10 @@ export function Hero({
               target="_blank"
               rel="noopener noreferrer"
               className="btn btn-soft btn-lg"
+              onMouseEnter={() => whatsappIcon.current?.startAnimation()}
+              onMouseLeave={() => whatsappIcon.current?.stopAnimation()}
             >
-              <MessageCircle className="h-4 w-4" /> WhatsApp
+              <Message01 ref={whatsappIcon} className="h-4 w-4" /> WhatsApp
             </a>
           </div>
 

@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Star } from "lucide-react";
+import { Star } from "@animateicons/react/huge";
 import { cn } from "@/lib/utils";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 export function Stars({
   value,
@@ -19,10 +20,8 @@ export function Stars({
       {[1, 2, 3, 4, 5].map((i) => (
         <Star
           key={i}
-          width={size}
-          height={size}
+          size={size}
           className={i <= Math.round(value) ? "fill-warning text-warning" : "text-line"}
-          strokeWidth={1.5}
         />
       ))}
     </span>
@@ -43,28 +42,51 @@ export function StarInput({
   return (
     <div className="flex items-center gap-1.5" role="radiogroup" aria-label="Rating">
       {[1, 2, 3, 4, 5].map((i) => (
-        <motion.button
-          key={i}
-          type="button"
-          role="radio"
-          aria-checked={value === i}
-          aria-label={`${i} star`}
-          onMouseEnter={() => setHover(i)}
-          onMouseLeave={() => setHover(0)}
-          onClick={() => onChange(i)}
-          whileTap={{ scale: 0.8 }}
-          animate={{ scale: value === i ? 1.12 : 1 }}
-          transition={{ type: "spring", stiffness: 420, damping: 14 }}
-          className="grid place-items-center"
-        >
-          <Star
-            width={30}
-            height={30}
-            className={i <= shown ? "fill-warning text-warning" : "text-line hover:text-muted"}
-            strokeWidth={1.6}
-          />
-        </motion.button>
+        <StarButton key={i} i={i} value={value} shown={shown} onChange={onChange} setHover={setHover} />
       ))}
     </div>
+  );
+}
+
+function StarButton({
+  i,
+  value,
+  shown,
+  onChange,
+  setHover,
+}: {
+  i: number;
+  value: number;
+  shown: number;
+  onChange: (v: number) => void;
+  setHover: (v: number) => void;
+}) {
+  const ref = useAnimIcon();
+  return (
+    <motion.button
+      type="button"
+      role="radio"
+      aria-checked={value === i}
+      aria-label={`${i} star`}
+      onMouseEnter={() => {
+        setHover(i);
+        ref.current?.startAnimation();
+      }}
+      onMouseLeave={() => {
+        setHover(0);
+        ref.current?.stopAnimation();
+      }}
+      onClick={() => onChange(i)}
+      whileTap={{ scale: 0.8 }}
+      animate={{ scale: value === i ? 1.12 : 1 }}
+      transition={{ type: "spring", stiffness: 420, damping: 14 }}
+      className="grid place-items-center"
+    >
+      <Star
+        ref={ref}
+        size={30}
+        className={i <= shown ? "fill-warning text-warning" : "text-line hover:text-muted"}
+      />
+    </motion.button>
   );
 }

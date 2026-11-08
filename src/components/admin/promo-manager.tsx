@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useActionState } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Pencil, Plus, Trash2, X } from "lucide-react";
+import { Add01, Cancel01, Delete02, Loading01, Pencil } from "@animateicons/react/huge";
 import { toast } from "react-toastify";
 import { confirmDialog } from "@/lib/confirm";
 import type { PromoCode } from "@/lib/types";
@@ -12,6 +12,7 @@ import {
   savePromoAction,
   type ActionState,
 } from "@/lib/actions/admin";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 const initial: ActionState = {};
 
@@ -32,6 +33,11 @@ export function PromoManager({ promos, now }: { promos: PromoCode[]; now: number
     },
     initial,
   );
+  // AnimateIcons refs for promo manager icons
+  const cancelIcon = useAnimIcon();
+  const saveIcon = useAnimIcon();
+  const editIcon = useAnimIcon();
+  const trashIcon = useAnimIcon();
 
   function startEdit(p: PromoCode) {
     setEditing(p);
@@ -115,16 +121,18 @@ export function PromoManager({ promos, now }: { promos: PromoCode[]; now: number
             {editing ? `${editing.code} এডিট` : "নতুন promo কোড"}
           </h2>
           {editing && (
-            <button
-              type="button"
-              onClick={() => {
-                setEditing(null);
-                setFormKey((k) => k + 1);
-              }}
-              className="btn btn-ghost btn-sm !px-2.5"
-              aria-label="এডিট বাতিল করুন"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden />
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(null);
+                  setFormKey((k) => k + 1);
+                }}
+                className="btn btn-ghost btn-sm !px-2.5"
+                aria-label="এডিট বাতিল করুন"
+                onMouseEnter={() => cancelIcon.current?.startAnimation()}
+                onMouseLeave={() => cancelIcon.current?.stopAnimation()}
+              >
+                <Cancel01 ref={cancelIcon} className="h-3.5 w-3.5" aria-hidden />
             </button>
           )}
         </div>
@@ -242,13 +250,13 @@ export function PromoManager({ promos, now }: { promos: PromoCode[]; now: number
             <span className="text-sm font-semibold">কোডটি চালু থাকবে</span>
           </label>
 
-          <button type="submit" disabled={pending} className="btn btn-primary btn-block">
+          <button type="submit" disabled={pending} className="btn btn-primary btn-block" onMouseEnter={() => saveIcon.current?.startAnimation()} onMouseLeave={() => saveIcon.current?.stopAnimation()}>
             {pending ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              <Loading01 ref={saveIcon} className="h-4 w-4 animate-spin" aria-hidden />
             ) : editing ? (
-              <Pencil className="h-4 w-4" aria-hidden />
+              <Pencil ref={saveIcon} className="h-4 w-4" aria-hidden />
             ) : (
-              <Plus className="h-4 w-4" aria-hidden />
+              <Add01 ref={saveIcon} className="h-4 w-4" aria-hidden />
             )}
             {editing ? "আপডেট করুন" : "কোড তৈরি করুন"}
           </button>
@@ -315,8 +323,10 @@ export function PromoManager({ promos, now }: { promos: PromoCode[]; now: number
                       onClick={() => startEdit(p)}
                       className="btn btn-soft btn-sm"
                       aria-label={`${p.code} এডিট করুন`}
+                      onMouseEnter={() => editIcon.current?.startAnimation()}
+                      onMouseLeave={() => editIcon.current?.stopAnimation()}
                     >
-                      <Pencil className="h-3.5 w-3.5" aria-hidden />
+                      <Pencil ref={editIcon} className="h-3.5 w-3.5" aria-hidden />
                     </button>
                     <button
                       type="button"
@@ -324,8 +334,10 @@ export function PromoManager({ promos, now }: { promos: PromoCode[]; now: number
                       disabled={rowPending}
                       className="btn btn-ghost btn-sm text-danger hover:bg-danger/10"
                       aria-label={`${p.code} মুছে ফেলুন`}
+                      onMouseEnter={() => trashIcon.current?.startAnimation()}
+                      onMouseLeave={() => trashIcon.current?.stopAnimation()}
                     >
-                      <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                      <Delete02 ref={trashIcon} className="h-3.5 w-3.5" aria-hidden />
                     </button>
                   </div>
                 </div>

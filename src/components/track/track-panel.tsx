@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useActionState, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Loader2, MapPin, MessageCircle, Phone, Radio, Search, Star } from "lucide-react";
+import { Check, Loading01, Location01, Message01, Phone, Search, Star } from "@animateicons/react/huge";
+import { Radio } from "lucide-react";
 import type { Order, OrderStatusHistory } from "@/lib/types";
 import { ORDER_STATUS_FLOW, ORDER_STATUS_META, PAYMENT_METHOD_LABEL } from "@/lib/constants";
 import { formatBDT, formatDateTime, waLink } from "@/lib/utils";
 import { trackOrderAction, type TrackResult } from "@/lib/actions/order";
 import { useOrderLive } from "@/components/track/use-order-live";
 import { CustomDesignSummary, hasCustomDesign } from "@/components/order/custom-design-summary";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 const initialState: TrackResult = {};
 
@@ -43,6 +45,10 @@ export function TrackPanel({
     },
     initialState,
   );
+  // AnimateIcons refs for track panel interactive icons
+  const searchIcon = useAnimIcon();
+  const whatsappTrackIcon = useAnimIcon();
+  const reviewIcon = useAnimIcon();
 
   const live = useOrderLive(
     order ? { orderId: order.id, orderNo: order.order_no, phone: lookupPhone } : null,
@@ -113,8 +119,8 @@ export function TrackPanel({
             />
           </div>
           <div className="flex items-end">
-            <button type="submit" disabled={pending} className="btn btn-primary btn-lg w-full sm:w-auto">
-              {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            <button type="submit" disabled={pending} className="btn btn-primary btn-lg w-full sm:w-auto" onMouseEnter={() => searchIcon.current?.startAnimation()} onMouseLeave={() => searchIcon.current?.stopAnimation()}>
+              {pending ? <Loading01 ref={searchIcon} className="h-4 w-4 animate-spin" /> : <Search ref={searchIcon} className="h-4 w-4" />}
               খুঁজুন
             </button>
           </div>
@@ -187,7 +193,7 @@ export function TrackPanel({
                 <div>
                   <p className="text-xs font-semibold text-muted">ডেলিভারি</p>
                   <p className="mt-1 flex items-start gap-1.5">
-                    <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" />
+                    <Location01 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" />
                     {viewOrder.address}
                   </p>
                   <p className="mt-1 text-xs text-muted">{viewOrder.delivery_date}</p>
@@ -206,13 +212,15 @@ export function TrackPanel({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-soft btn-block"
+                onMouseEnter={() => whatsappTrackIcon.current?.startAnimation()}
+                onMouseLeave={() => whatsappTrackIcon.current?.stopAnimation()}
               >
-                <MessageCircle className="h-4 w-4" /> WhatsApp এ কথা বলুন
+                <Message01 ref={whatsappTrackIcon} className="h-4 w-4" /> WhatsApp এ কথা বলুন
               </a>
 
               {["delivered", "completed"].includes(viewOrder.order_status) ? (
-                <Link href={`/review/${viewOrder.id}`} className="btn btn-primary btn-block">
-                  <Star className="h-4 w-4" /> রিভিউ দিন
+                <Link href={`/review/${viewOrder.id}`} className="btn btn-primary btn-block" onMouseEnter={() => reviewIcon.current?.startAnimation()} onMouseLeave={() => reviewIcon.current?.stopAnimation()}>
+                  <Star ref={reviewIcon} className="h-4 w-4" /> রিভিউ দিন
                 </Link>
               ) : (
                 <span className="btn btn-ghost btn-block !cursor-default opacity-70">

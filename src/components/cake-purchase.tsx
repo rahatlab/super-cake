@@ -3,11 +3,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Check, Minus, Plus, ShoppingBag, Zap } from "lucide-react";
+import { Check, MinusSign, Add01, ShoppingBag01, Flash } from "@animateicons/react/huge";
 import type { Cake } from "@/lib/types";
 import { formatBDT, waLink, weightLabel } from "@/lib/utils";
 import { AnimatedNumber } from "@/components/reveal";
 import { useCart } from "@/components/cart/cart-context";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 export function CakePurchase({
   cake,
@@ -25,6 +26,12 @@ export function CakePurchase({
 }) {
   const router = useRouter();
   const { add, setOpen } = useCart();
+  // AnimateIcons refs for purchase action icons
+  const minusIcon = useAnimIcon();
+  const plusIcon = useAnimIcon();
+  const bagIcon = useAnimIcon();
+  const zapIcon = useAnimIcon();
+  const checkIcon = useAnimIcon();
 
   const available = useMemo(() => (cake.sizes ?? []).filter((s) => s.is_available), [cake.sizes]);
   const initial = available.find((s) => s.weight === 1) ?? available[0];
@@ -137,8 +144,10 @@ export function CakePurchase({
             disabled={qty <= 1}
             className="grid h-9 w-9 place-items-center rounded-full border border-line disabled:opacity-40"
             aria-label="কমান"
+            onMouseEnter={() => minusIcon.current?.startAnimation()}
+            onMouseLeave={() => minusIcon.current?.stopAnimation()}
           >
-            <Minus className="h-4 w-4" />
+            <MinusSign ref={minusIcon} className="h-4 w-4" />
           </motion.button>
           <AnimatePresence mode="popLayout">
             <motion.span
@@ -157,8 +166,10 @@ export function CakePurchase({
             disabled={qty >= 50}
             className="grid h-9 w-9 place-items-center rounded-full border border-line disabled:opacity-40"
             aria-label="বাড়ান"
+            onMouseEnter={() => plusIcon.current?.startAnimation()}
+            onMouseLeave={() => plusIcon.current?.stopAnimation()}
           >
-            <Plus className="h-4 w-4" />
+            <Add01 ref={plusIcon} className="h-4 w-4" />
           </motion.button>
         </div>
       </div>
@@ -180,7 +191,7 @@ export function CakePurchase({
                 exit={{ scale: 0.6, opacity: 0 }}
                 className="inline-flex items-center gap-2"
               >
-                <Check className="h-4 w-4" /> কার্টে যোগ হয়েছে
+                <Check ref={checkIcon} className="h-4 w-4" /> কার্টে যোগ হয়েছে
               </motion.span>
             ) : (
               <motion.span
@@ -190,7 +201,7 @@ export function CakePurchase({
                 exit={{ scale: 0.6, opacity: 0 }}
                 className="inline-flex items-center gap-2"
               >
-                <ShoppingBag className="h-4 w-4" />
+                <ShoppingBag01 ref={bagIcon} className="h-4 w-4" />
                 {soldOut ? "Sold Out" : "কার্টে দিন"}
               </motion.span>
             )}
@@ -198,8 +209,8 @@ export function CakePurchase({
         </motion.button>
 
         {!soldOut && (
-          <button onClick={handleBuyNow} className="btn btn-ghost btn-lg btn-block">
-            <Zap className="h-4 w-4" /> সরাসরি অর্ডার করুন
+          <button onClick={handleBuyNow} className="btn btn-ghost btn-lg btn-block" onMouseEnter={() => zapIcon.current?.startAnimation()} onMouseLeave={() => zapIcon.current?.stopAnimation()}>
+            <Flash ref={zapIcon} className="h-4 w-4" /> সরাসরি অর্ডার করুন
           </button>
         )}
 

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "@animateicons/react/huge";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 type PageItem = number | "gap";
 
@@ -136,6 +137,7 @@ function PageButton({
       : "bg-transparent text-muted hover:bg-fg/[0.05]",
     disabled && "pointer-events-none opacity-40",
   );
+  const navIcon = useAnimIcon();
 
   // Controlled mode: the parent list slices its rows itself.
   if (onPageChange) {
@@ -147,6 +149,8 @@ function PageButton({
         disabled={disabled}
         onClick={() => onPageChange(target)}
         className={className}
+        onMouseEnter={() => navIcon.current?.startAnimation()}
+        onMouseLeave={() => navIcon.current?.stopAnimation()}
       >
         {children}
       </button>
@@ -162,7 +166,7 @@ function PageButton({
   }
 
   return (
-    <Link href={href} aria-label={label} aria-current={active ? "page" : undefined} className={className}>
+    <Link href={href} aria-label={label} aria-current={active ? "page" : undefined} className={className} onMouseEnter={() => navIcon.current?.startAnimation()} onMouseLeave={() => navIcon.current?.stopAnimation()}>
       {children}
     </Link>
   );
