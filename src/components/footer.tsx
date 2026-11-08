@@ -1,10 +1,24 @@
 import Link from "next/link";
-import { Location01, Mail01, Phone } from "@animateicons/react/huge";
+import {
+  Location01,
+  Mail01,
+  Phone,
+  Facebook,
+  Instagram,
+  MoneyBag01,
+  DeliveryTruck01,
+} from "@animateicons/react/huge";
 import type { Settings } from "@/lib/types";
 import { waLink } from "@/lib/utils";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 export function Footer({ settings }: { settings: Settings }) {
   const year = new Date().getFullYear();
+  const fbIcon = useAnimIcon();
+  const igIcon = useAnimIcon();
+  const codIcon = useAnimIcon();
+  const bkashIcon = useAnimIcon();
+  const deliveryIcon = useAnimIcon();
 
   return (
     <footer className="mt-20 border-t border-line bg-surface">
@@ -29,6 +43,8 @@ export function Footer({ settings }: { settings: Settings }) {
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-2 hover:text-brand-strong"
+              onMouseEnter={() => fbIcon.current?.startAnimation()}
+              onMouseLeave={() => fbIcon.current?.stopAnimation()}
             >
               <Phone className="h-4 w-4" /> {settings.phone}
             </a>
@@ -38,6 +54,30 @@ export function Footer({ settings }: { settings: Settings }) {
             <p className="flex items-center gap-2">
               <Location01 className="h-4 w-4" /> {settings.address}
             </p>
+            {settings.facebook && (
+              <a
+                href={settings.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:text-brand-strong"
+                onMouseEnter={() => fbIcon.current?.startAnimation()}
+                onMouseLeave={() => fbIcon.current?.stopAnimation()}
+              >
+                <Facebook ref={fbIcon} className="h-4 w-4" /> Facebook Page
+              </a>
+            )}
+            {settings.instagram && (
+              <a
+                href={settings.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 hover:text-brand-strong"
+                onMouseEnter={() => igIcon.current?.startAnimation()}
+                onMouseLeave={() => igIcon.current?.stopAnimation()}
+              >
+                <Instagram ref={igIcon} className="h-4 w-4" /> Instagram
+              </a>
+            )}
           </div>
         </div>
 
@@ -66,9 +106,28 @@ export function Footer({ settings }: { settings: Settings }) {
         <div>
           <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted">পেমেন্ট</h3>
           <ul className="space-y-2 text-sm text-muted">
-            {settings.cod_enabled && <li>💵 Cash on Delivery</li>}
-            {settings.bkash_enabled && <li>📱 bKash (Send Money)</li>}
-            <li>🚚 ডেলিভারি চার্জ ৳{settings.delivery_charge}</li>
+            {settings.cod_enabled && (
+              <li
+                onMouseEnter={() => codIcon.current?.startAnimation()}
+                onMouseLeave={() => codIcon.current?.stopAnimation()}
+              >
+                <MoneyBag01 ref={codIcon} className="h-4 w-4 shrink-0" /> Cash on Delivery
+              </li>
+            )}
+            {settings.bkash_enabled && (
+              <li
+                onMouseEnter={() => bkashIcon.current?.startAnimation()}
+                onMouseLeave={() => bkashIcon.current?.stopAnimation()}
+              >
+                <Phone ref={bkashIcon} className="h-4 w-4 shrink-0" /> bKash (Send Money)
+              </li>
+            )}
+            <li
+              onMouseEnter={() => deliveryIcon.current?.startAnimation()}
+              onMouseLeave={() => deliveryIcon.current?.stopAnimation()}
+            >
+              <DeliveryTruck01 ref={deliveryIcon} className="h-4 w-4 shrink-0" /> ডেলিভারি চার্জ ৳{settings.delivery_charge}
+            </li>
             {settings.free_delivery_enabled && settings.free_delivery_min > 0 && (
               <li className="pt-1 text-xs">
                 ৳{settings.free_delivery_min}+ অর্ডারে ফ্রি ডেলিভারি

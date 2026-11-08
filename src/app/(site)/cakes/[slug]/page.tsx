@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 import { MapPin, ShieldCheck, Truck } from "lucide-react";
+import { Facebook, Instagram } from "@animateicons/react/huge";
 import { getCachedSettings, listCachedCakes } from "@/lib/store/cache";
 import { getCakeBySlug, getApprovedReviews } from "@/lib/store/queries";
 import { OCCASIONS, SITE } from "@/lib/constants";
@@ -191,6 +192,28 @@ export default async function CakeDetailPage({ params }: Ctx) {
           <a href={wa} className="btn btn-soft btn-block mt-4">
             💬 প্রশ্ন করুন WhatsApp এ
           </a>
+
+          {/* Social share */}
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <a
+              href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+                `${process.env.NEXT_PUBLIC_SITE_URL || ""}/cakes/${cake.slug}`
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-soft btn-block"
+            >
+              <Facebook className="h-4 w-4 shrink-0" /> Facebook
+            </a>
+            <a
+              href={settings.instagram || "https://instagram.com"}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-soft btn-block"
+            >
+              <Instagram className="h-4 w-4 shrink-0" /> Instagram
+            </a>
+          </div>
         </div>
       </div>
 
