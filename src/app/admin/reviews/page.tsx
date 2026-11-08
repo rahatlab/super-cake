@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
-import { Star } from "lucide-react";
+import { Star } from "@animateicons/react/huge";
 import { getStore } from "@/lib/store";
 import { cn, formatDateTime, parsePageParam } from "@/lib/utils";
 import { Stars } from "@/components/star-rating";
@@ -48,7 +48,7 @@ export default async function AdminReviewsPage({
             <p className="text-xs font-bold uppercase tracking-wide text-muted">গড় রেটিং</p>
             <p className="flex items-center gap-1.5 font-display text-xl font-extrabold">
               {avg}
-              <Star className="h-4 w-4 fill-warning text-warning" aria-hidden />
+              <Star className="h-4 w-4 fill-current text-warning" style={{ stroke: "none" }} aria-hidden />
             </p>
           </div>
           <div className="text-right">

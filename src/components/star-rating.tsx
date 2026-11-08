@@ -21,7 +21,8 @@ export function Stars({
         <Star
           key={i}
           size={size}
-          className={i <= Math.round(value) ? "fill-warning text-warning" : "text-line"}
+          className={i <= Math.round(value) ? "fill-current text-warning" : "text-line"}
+          style={i <= Math.round(value) ? { stroke: "none" } : undefined}
         />
       ))}
     </span>
@@ -85,7 +86,8 @@ function StarButton({
       <Star
         ref={ref}
         size={30}
-        className={i <= shown ? "fill-warning text-warning" : "text-line hover:text-muted"}
+        className={i <= shown ? "fill-current text-warning" : "text-line hover:text-muted"}
+        style={i <= shown ? { stroke: "none" } : undefined}
       />
     </motion.button>
   );
