@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Check, Copy } from "@animateicons/react/huge";
+import { Facebook, Instagram } from "@animateicons/react/huge";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
@@ -31,7 +32,8 @@ export function BlogShare({ title }: { title: string }) {
   };
 
   return (
-    <button type="button" onClick={share} className="btn btn-ghost btn-sm !px-3">
+    <>
+      <button type="button" onClick={share} className="btn btn-ghost btn-sm !px-3">
       <AnimatePresence mode="wait" initial={false}>
         {copied ? (
           <motion.span
@@ -57,5 +59,26 @@ export function BlogShare({ title }: { title: string }) {
         )}
       </AnimatePresence>
     </button>
+
+    {/* Social share links */}
+    <div className="mt-2 grid grid-cols-2 gap-2">
+      <a
+        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn btn-soft btn-block"
+      >
+        <Facebook className="h-4 w-4 shrink-0" /> Facebook
+      </a>
+      <a
+        href="https://www.instagram.com"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="btn btn-soft btn-block"
+      >
+        <Instagram className="h-4 w-4 shrink-0" /> Instagram
+      </a>
+    </div>
+    </>
   );
 }
