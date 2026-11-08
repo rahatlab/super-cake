@@ -25,6 +25,7 @@ export function Footer({ settings }: { settings: Settings }) {
   return (
     <footer className="mt-20 border-t border-line bg-surface">
       <div className="container-page grid gap-10 py-12 md:grid-cols-4">
+        {/* Contact */}
         <div className="md:col-span-2">
           <div className="flex items-center gap-2">
             <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-brand to-accent text-lg">
@@ -40,49 +41,55 @@ export function Footer({ settings }: { settings: Settings }) {
           </p>
 
           <div className="mt-5 space-y-2 text-sm text-muted">
+            {/* Phone */}
             <a
               href={waLink(settings.whatsapp_phone, `হ্যালো ${settings.store_name}!`)}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 hover:text-brand-strong"
+              className="inline-flex items-center gap-2 hover:text-brand-strong"
               onMouseEnter={() => fbIcon.current?.startAnimation()}
               onMouseLeave={() => fbIcon.current?.stopAnimation()}
             >
-              <Phone className="h-4 w-4" /> {settings.phone}
+              <Phone className="h-4 w-4 shrink-0" /> {settings.phone}
             </a>
-            <p className="flex items-center gap-2">
-              <Mail01 className="h-4 w-4" /> {settings.email}
-            </p>
-            <p className="flex items-center gap-2">
-              <Location01 className="h-4 w-4" /> {settings.address}
-            </p>
+            {/* Email */}
+            <span className="inline-flex items-center gap-2">
+              <Mail01 className="h-4 w-4 shrink-0" /> {settings.email}
+            </span>
+            {/* Address */}
+            <span className="inline-flex items-center gap-2">
+              <Location01 className="h-4 w-4 shrink-0" /> {settings.address}
+            </span>
+            {/* Facebook */}
             {settings.facebook && (
               <a
                 href={settings.facebook}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:text-brand-strong"
+                className="inline-flex items-center gap-2 hover:text-brand-strong"
                 onMouseEnter={() => fbIcon.current?.startAnimation()}
                 onMouseLeave={() => fbIcon.current?.stopAnimation()}
               >
-                <Facebook ref={fbIcon} className="h-4 w-4" /> Facebook Page
+                <Facebook ref={fbIcon} className="h-4 w-4 shrink-0" /> Facebook Page
               </a>
             )}
+            {/* Instagram */}
             {settings.instagram && (
               <a
                 href={settings.instagram}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 hover:text-brand-strong"
+                className="inline-flex items-center gap-2 hover:text-brand-strong"
                 onMouseEnter={() => igIcon.current?.startAnimation()}
                 onMouseLeave={() => igIcon.current?.stopAnimation()}
               >
-                <Instagram ref={igIcon} className="h-4 w-4" /> Instagram
+                <Instagram ref={igIcon} className="h-4 w-4 shrink-0" /> Instagram
               </a>
             )}
           </div>
         </div>
 
+        {/* Quick links */}
         <div>
           <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted">দ্রুত লিংক</h3>
           <ul className="space-y-2 text-sm">
@@ -105,29 +112,22 @@ export function Footer({ settings }: { settings: Settings }) {
           </ul>
         </div>
 
+        {/* Payment */}
         <div>
           <h3 className="mb-3 text-sm font-bold uppercase tracking-wider text-muted">পেমেন্ট</h3>
           <ul className="space-y-2 text-sm text-muted">
             {settings.cod_enabled && (
-              <li
-                onMouseEnter={() => codIcon.current?.startAnimation()}
-                onMouseLeave={() => codIcon.current?.stopAnimation()}
-              >
-                <MoneyBag01 ref={codIcon} className="h-4 w-4 shrink-0" /> Cash on Delivery
+              <li className="inline-flex items-center gap-2">
+                <MoneyBag01 ref={codIcon} className="h-4 w-4 shrink-0" />
+                Cash on Delivery
               </li>
             )}
             {settings.bkash_enabled && (
-              <li
-                onMouseEnter={() => bkashIcon.current?.startAnimation()}
-                onMouseLeave={() => bkashIcon.current?.stopAnimation()}
-              >
+              <li className="inline-flex items-center gap-2">
                 <Phone ref={bkashIcon} className="h-4 w-4 shrink-0" /> bKash (Send Money)
               </li>
             )}
-            <li
-              onMouseEnter={() => deliveryIcon.current?.startAnimation()}
-              onMouseLeave={() => deliveryIcon.current?.stopAnimation()}
-            >
+            <li className="inline-flex items-center gap-2">
               <DeliveryTruck01 ref={deliveryIcon} className="h-4 w-4 shrink-0" /> ডেলিভারি চার্জ ৳{settings.delivery_charge}
             </li>
             {settings.free_delivery_enabled && settings.free_delivery_min > 0 && (
