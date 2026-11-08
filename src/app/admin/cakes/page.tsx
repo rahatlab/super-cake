@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { Pencil, Plus, Star } from "lucide-react";
+import { Facebook } from "@animateicons/react/huge";
 import { getStore } from "@/lib/store";
 import { formatBDT, parsePageParam, weightLabel } from "@/lib/utils";
 import { CakeRowActions } from "@/components/admin/cake-row-actions";
@@ -159,6 +160,17 @@ export default async function AdminCakesPage({
                         <Link href={`/admin/cakes/${cake.id}/edit`} className="btn btn-soft btn-sm">
                           <Pencil className="h-3.5 w-3.5" aria-hidden /> Edit
                         </Link>
+                        <a
+                          href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+                            `${process.env.NEXT_PUBLIC_SITE_URL || ""}/cakes/${cake.slug}`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-ghost btn-sm"
+                          title="ফেসবুকে শেয়ার করুন"
+                        >
+                          <Facebook className="h-3.5 w-3.5" /> FB শেয়ার
+                        </a>
                         <CakeRowActions
                           cakeId={cake.id}
                           cakeName={cake.name}
