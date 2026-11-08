@@ -19,6 +19,7 @@ import { OfferBanner } from "@/components/home/offer-banner";
 import { Testimonials } from "@/components/home/testimonials";
 import { CakeCard } from "@/components/cake-card";
 import { Reveal } from "@/components/reveal";
+import { OccasionChip } from "@/components/occasion/occasion-chip";
 
 export const revalidate = 300; // Revalidate every 5 minutes
 
@@ -186,10 +187,7 @@ export default async function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-2.5">
             <span className="mr-1 text-xs font-bold uppercase tracking-wider text-muted">অনুসন্ধান:</span>
             {OCCASIONS.map((o) => (
-              <Link key={o.value} href={`/cakes?occasion=${o.value}`} className="chip">
-                <span aria-hidden>{o.emoji}</span> {o.label}
-                <span className="font-normal text-muted">· {o.bn}</span>
-              </Link>
+              <OccasionChip key={o.value} occasion={o} />
             ))}
           </div>
         </Reveal>

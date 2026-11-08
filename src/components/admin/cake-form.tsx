@@ -12,6 +12,7 @@ import { saveCakeAction, uploadImagesAction, type ActionState } from "@/lib/acti
 import { compressImageFile } from "@/lib/compress-image";
 import type { Cake, Occasion } from "@/lib/types";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { OccasionIcon } from "@/components/occasion/occasion-chip";
 
 interface SizeRow {
   weight: number;
@@ -260,7 +261,7 @@ export function CakeForm({ cake }: { cake?: Cake }) {
                   data-active={occasions.includes(o.value)}
                   className="chip"
                 >
-                  {o.emoji} {o.bn}
+                  <OccasionIcon value={o.value} size={16} /> {o.bn}
                 </button>
               ))}
             </div>

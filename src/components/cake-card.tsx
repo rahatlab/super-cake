@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Add01Icon } from "@animateicons/react/huge";
+import { Add01Icon, Star } from "@animateicons/react/huge";
 import type { Cake } from "@/lib/types";
 import { formatBDT, weightLabel } from "@/lib/utils";
 import { useCart } from "@/components/cart/cart-context";
@@ -26,6 +26,7 @@ export function CakeCard({
   // AnimateIcons refs — icons only animate when driven from the card/button hover.
   const hoverAddIcon = useAnimIcon();
   const quickAddIcon = useAnimIcon();
+  const featuredIcon = useAnimIcon();
 
   const available = cake.sizes?.filter((s) => s.is_available) ?? [];
   const first = available[0];
@@ -64,7 +65,15 @@ export function CakeCard({
         )}
 
         <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
-          {cake.is_featured && <span className="badge bg-brand text-brand-fg shadow-soft">⭐ Featured</span>}
+          {cake.is_featured && (
+            <span
+              className="badge bg-brand text-brand-fg shadow-soft"
+              onMouseEnter={() => featuredIcon.current?.startAnimation()}
+              onMouseLeave={() => featuredIcon.current?.stopAnimation()}
+            >
+              <Star ref={featuredIcon} size={14} aria-hidden /> Featured
+            </span>
+          )}
           {soldOut && <span className="badge bg-danger text-white">Sold Out</span>}
           {!soldOut && cake.stock <= 3 && (
             <span className="badge bg-warning text-black">শুধু {cake.stock} বাকি</span>

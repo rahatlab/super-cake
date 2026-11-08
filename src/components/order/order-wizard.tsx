@@ -30,6 +30,7 @@ import {
 import { useCart } from "@/components/cart/cart-context";
 import { AnimatedNumber } from "@/components/reveal";
 import { OrderLoadingOverlay } from "@/components/order/order-loading-overlay";
+import { OccasionButton } from "@/components/order/occasion-button";
 import { CreditCardIcon, LockKeyholeIcon, PhoneIcon, Wallet01Icon } from "@animateicons/react/huge";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
@@ -433,37 +434,14 @@ export function OrderWizard({
             </p>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {OCCASIONS.map((o) => {
-                const active = occasion === o.value;
-                return (
-                  <motion.button
-                    key={o.value}
-                    type="button"
-                    onClick={() => setOccasion(o.value)}
-                    whileHover={{ y: -4 }}
-                    whileTap={{ scale: 0.97 }}
-                    className={`relative rounded-2xl border-2 p-4 text-left transition-colors ${
-                      active ? "border-brand bg-brand/8" : "border-line bg-surface hover:border-brand/40"
-                    }`}
-                    aria-pressed={active}
-                  >
-                    {active && (
-                      <motion.span
-                        layoutId="occ-check"
-                        className="absolute right-3 top-3 grid h-6 w-6 place-items-center rounded-full bg-brand text-brand-fg"
-                        transition={{ type: "spring", stiffness: 420, damping: 26 }}
-                      >
-                        <Check className="h-3.5 w-3.5" />
-                      </motion.span>
-                    )}
-                    <span className="text-3xl">{o.emoji}</span>
-                    <p className="mt-2 text-sm font-extrabold">{o.label}</p>
-                    <p className="text-xs text-muted">
-                      {o.bn} · {o.hint}
-                    </p>
-                  </motion.button>
-                );
-              })}
+              {OCCASIONS.map((o) => (
+                <OccasionButton
+                  key={o.value}
+                  occasion={o}
+                  active={occasion === o.value}
+                  onSelect={setOccasion}
+                />
+              ))}
             </div>
           </section>
 
