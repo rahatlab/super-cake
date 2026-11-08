@@ -5,10 +5,24 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Expand, X } from "lucide-react";
 
-export function CakeGallery({ images, name }: { images: string[]; name: string }) {
+export function CakeGallery({
+  images,
+  name,
+  fit = "contain",
+  position = "center",
+}: {
+  images: string[];
+  name: string;
+  fit?: "cover" | "contain";
+  position?: "center" | "top" | "bottom";
+}) {
   const list = images.length ? images : ["/cakes/custom-placeholder.svg"];
   const [index, setIndex] = useState(0);
   const [zoom, setZoom] = useState(false);
+
+  const fitClass = fit === "contain" ? "object-contain" : "object-cover";
+  const posClass =
+    position === "top" ? "object-top" : position === "bottom" ? "object-bottom" : "object-center";
 
   const go = (dir: number) => setIndex((i) => (i + dir + list.length) % list.length);
 
@@ -30,7 +44,7 @@ export function CakeGallery({ images, name }: { images: string[]; name: string }
 
   return (
     <div className="space-y-3">
-      <div className="card group relative aspect-square overflow-hidden !rounded-3xl">
+      <div className="card group relative aspect-square overflow-hidden !rounded-3xl bg-surface">
         <AnimatePresence mode="wait">
           <motion.div
             key={index}
@@ -46,7 +60,7 @@ export function CakeGallery({ images, name }: { images: string[]; name: string }
               fill
               priority
               sizes="(max-width: 1024px) 100vw, 50vw"
-              className="object-cover transition-transform duration-500 group-hover:scale-[1.15]"
+              className={`${fitClass} ${posClass} transition-transform duration-500 group-hover:scale-[1.15]`}
             />
           </motion.div>
         </AnimatePresence>
@@ -99,7 +113,7 @@ export function CakeGallery({ images, name }: { images: string[]; name: string }
                 // The active thumbnail is already on screen with the main
                 // image; only the rest wait until the row scrolls into view.
                 loading={i === index ? "eager" : "lazy"}
-                className="object-cover"
+                className={`${fitClass} ${posClass}`}
               />
             </button>
           ))}

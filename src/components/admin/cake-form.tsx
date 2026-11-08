@@ -9,6 +9,7 @@ import { Eye, Loader2, Plus, Trash2 } from "lucide-react";
 import { CATEGORIES, FLAVORS, MAX_CAKE_IMAGES, OCCASIONS, WEIGHTS } from "@/lib/constants";
 import { formatBDT, weightLabel } from "@/lib/utils";
 import { saveCakeAction, uploadImagesAction, type ActionState } from "@/lib/actions/admin";
+import { compressImageFile } from "@/lib/compress-image";
 import type { Cake, Occasion } from "@/lib/types";
 
 interface SizeRow {
@@ -37,6 +38,9 @@ export function CakeForm({ cake }: { cake?: Cake }) {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [desc, setDesc] = useState(cake?.description ?? "");
+  const [imageFit, setImageFit] = useState<"cover" | "contain">(cake?.image_fit ?? "contain");
+  const [imagePosition, setImagePosition] = useState<"center" | "top" | "bottom">(cake?.image_position ?? "center");
+  const [previewDims, setPreviewDims] = useState<Record<string, string>>({});
 
   /**
    * Synchronous double-submit lock. React state (`pending`) only flips after a
@@ -98,7 +102,7 @@ export function CakeForm({ cake }: { cake?: Cake }) {
         }
         setUploading(true);
         const up = new FormData();
-        for (const f of files) up.append("images", f);
+        for (const f of files) up.append("images", await compressImageFile(f));
         const res = await uploadImagesAction(up);
         setUploading(false);
         if (res.error) {
@@ -132,6 +136,8 @@ export function CakeForm({ cake }: { cake?: Cake }) {
       fd.set("occasions", JSON.stringify(occasions));
       fd.set("sizes", JSON.stringify(sizes.filter((s) => s.price > 0)));
       fd.set("base_price", String(basePrice));
+      fd.set("image_fit", imageFit);
+      fd.set("image_position", imagePosition);
       setImages(urls);
 
       dispatched = true;
@@ -331,8 +337,19 @@ export function CakeForm({ cake }: { cake?: Cake }) {
                     alt="কেকের ছবি"
                     width={96}
                     height={96}
-                    className="h-24 w-24 rounded-xl border border-line object-cover"
+                    onLoad={(e) => {
+                      const img = e.currentTarget;
+                      setPreviewDims((prev) =>
+                        prev[url] ? prev : { ...prev, [url]: `${img.naturalWidth}×${img.naturalHeight}` },
+                      );
+                    }}
+                    className={`h-24 w-24 rounded-xl border border-line ${imageFit === "contain" ? "object-contain bg-surface" : "object-cover"}`}
                   />
+                  {previewDims[url] && (
+                    <span className="absolute bottom-1 left-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      {previewDims[url]}
+                    </span>
+                  )}
                   <button
                     type="button"
                     onClick={() => removeImage(url)}
@@ -346,12 +363,52 @@ export function CakeForm({ cake }: { cake?: Cake }) {
             </div>
           )}
 
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <span className="label">ছবির ফিট</span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setImageFit("contain")}
+                  aria-pressed={imageFit === "contain"}
+                  className={`chip ${imageFit === "contain" ? "!border-brand !bg-brand/10" : ""}`}
+                >
+                  পুরো দেখাবে (Full visible)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageFit("cover")}
+                  aria-pressed={imageFit === "cover"}
+                  className={`chip ${imageFit === "cover" ? "!border-brand !bg-brand/10" : ""}`}
+                >
+                  ফ্রেম ভরবে (Fill frame)
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-muted">Full visible হলে পুরো কেক দেখাবে, কাটবে না।</p>
+            </div>
+            <div>
+              <label htmlFor="image-position" className="label">
+                অবস্থান
+              </label>
+              <select
+                id="image-position"
+                value={imagePosition}
+                onChange={(e) => setImagePosition(e.target.value as "center" | "top" | "bottom")}
+                className="field"
+              >
+                <option value="center">মাঝখানে (Center)</option>
+                <option value="top">উপরে (Top)</option>
+                <option value="bottom">নিচে (Bottom)</option>
+              </select>
+            </div>
+          </div>
+
           <div>
             <label htmlFor="cake-images" className="label">
               ফাইল আপলোড (একাধিক হতে পারে)
             </label>
             <input id="cake-images" type="file" name="images" multiple accept="image/*" className="field" />
-            <p className="mt-1 text-xs text-muted">সর্বোচ্চ ৫MB per file — JPG / PNG / WEBP / SVG</p>
+            <p className="mt-1 text-xs text-muted">সর্বোচ্চ ৫MB per file — JPG / PNG / WEBP / GIF / AVIF। বড় ছবি আপলোডের আগে অটো ছোট হবে (সর্বোচ্চ ১৬০০px)।</p>
           </div>
 
           <div>

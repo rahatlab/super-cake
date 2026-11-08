@@ -431,15 +431,19 @@ export const localStore: Store = {
   /* cakes */
   async listCakes(opts) {
     const db = await load();
-    return db.cakes.filter((c) => (opts?.includeInactive ? true : c.is_active));
+    return db.cakes
+      .filter((c) => (opts?.includeInactive ? true : c.is_active))
+      .map((c) => ({ ...c, image_fit: c.image_fit ?? "contain", image_position: c.image_position ?? "center" }));
   },
   async getCakeById(id) {
     const db = await load();
-    return db.cakes.find((c) => c.id === id) ?? null;
+    const c = db.cakes.find((c) => c.id === id) ?? null;
+    return c ? { ...c, image_fit: c.image_fit ?? "contain", image_position: c.image_position ?? "center" } : null;
   },
   async getCakeBySlug(slug) {
     const db = await load();
-    return db.cakes.find((c) => c.slug === slug) ?? null;
+    const c = db.cakes.find((c) => c.slug === slug) ?? null;
+    return c ? { ...c, image_fit: c.image_fit ?? "contain", image_position: c.image_position ?? "center" } : null;
   },
   async createCake(data) {
     return tx((db) => {
@@ -450,6 +454,8 @@ export const localStore: Store = {
         created_at: new Date().toISOString(),
         image_urls: data.image_urls?.length ? data.image_urls : ["/cakes/custom-placeholder.svg"],
         sizes: [],
+        image_fit: data.image_fit ?? "contain",
+        image_position: data.image_position ?? "center",
       };
       // slugBase handles non-Latin names (slugify would return ""); the helper
       // keeps the slug unique just like the production UNIQUE index.

@@ -450,6 +450,8 @@ export const supabaseStore: Store = {
         is_featured: data.is_featured,
         is_active: data.is_active,
         stock: data.stock,
+        image_fit: data.image_fit ?? "contain",
+        image_position: data.image_position ?? "center",
         created_at: new Date().toISOString(),
       };
       const { data: row, error } = await db().from("cakes").insert(payload).select("*").single();
@@ -469,8 +471,15 @@ export const supabaseStore: Store = {
       if (slug !== patch.slug) next = { ...patch, slug };
     }
 
+    // Strip fit fields until the migration has run — otherwise every save
+    // fails with PGRST204 on a DB that hasn't been migrated yet.
+    const { image_fit, image_position, ...rest } = next as Partial<Cake> & Record<string, unknown>;
+    const row: Record<string, unknown> = { ...rest };
+    if (image_fit !== undefined) row.image_fit = image_fit;
+    if (image_position !== undefined) row.image_position = image_position;
+
     for (let attempt = 0; attempt < 3; attempt++) {
-      const { error } = await db().from("cakes").update(next).eq("id", id);
+      const { error } = await db().from("cakes").update(row).eq("id", id);
       if (!error) return (await hydrateCake(id)) as Cake;
       if (!isDuplicate(error)) err(error);
       // Slug raced another writer — pick a fresh one and try again.

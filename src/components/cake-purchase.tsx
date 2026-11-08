@@ -12,14 +12,13 @@ import { useCart } from "@/components/cart/cart-context";
 export function CakePurchase({
   cake,
   whatsappPhone,
-  storeName,
   deliveryCharge,
   freeDeliveryEnabled,
   freeDeliveryMin,
 }: {
   cake: Cake;
   whatsappPhone: string;
-  storeName: string;
+  storeName?: string;
   deliveryCharge: number;
   freeDeliveryEnabled: boolean;
   freeDeliveryMin: number;
@@ -65,7 +64,7 @@ export function CakePurchase({
 
   const wa = waLink(
     whatsappPhone,
-    `হ্যালো ${storeName}! আমি "${cake.name}" (${weight ? weightLabel(weight) : "1 lb"} × ${qty}) অর্ডার করতে চাই। দাম ${formatBDT(lineTotal)}।`,
+    `order ${cake.name} ${qty} ${weight ?? 1}lb`,
   );
 
   return (

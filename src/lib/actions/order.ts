@@ -331,14 +331,18 @@ export async function placeOrderAction(
     payStationUrl = started.url;
   }
 
-  /* ---- notifications (after response; never block checkout) ---- */
-  after(async () => {
-    await Promise.allSettled([
-      notifyAdminNewOrder(settings.whatsapp_phone, order.order_no, order.total, order.id),
-      notifyOrderConfirmation({ order }),
-      markCartConverted(order.phone, order.id),
-    ]);
-  });
+  /* ---- notifications (after response; never block checkout) ----
+   * PayStation orders stay silent until the gateway confirms payment —
+   * settlePayStationOrder sends the confirmation once paid. */
+  if (input.payment_method !== "paystation") {
+    after(async () => {
+      await Promise.allSettled([
+        notifyAdminNewOrder(settings.whatsapp_phone, order.order_no, order.total, order.id),
+        notifyOrderConfirmation({ order }),
+        markCartConverted(order.phone, order.id),
+      ]);
+    });
+  }
 
   if (payStationUrl) redirect(payStationUrl);
 
@@ -373,6 +377,9 @@ export interface PromoCheckState {
   ok: boolean;
   discount: number;
   reason?: string;
+  percent?: number;
+  maxDiscount?: number;
+  minOrder?: number;
 }
 
 export async function validatePromoAction(code: string, subtotal: number): Promise<PromoCheckState> {
@@ -382,7 +389,14 @@ export async function validatePromoAction(code: string, subtotal: number): Promi
   const store = getStore();
   const promo = await store.getPromoByCode(trimmed);
   const result = evaluatePromo(promo, Math.max(0, Number(subtotal) || 0));
-  return { ok: result.ok, discount: result.discount, reason: result.reason };
+  return {
+    ok: result.ok,
+    discount: result.discount,
+    reason: result.reason,
+    percent: promo?.percent,
+    maxDiscount: promo?.max_discount,
+    minOrder: promo?.min_order,
+  };
 }
 
 /** Validate a referral code for the live checkout preview. */

@@ -130,6 +130,10 @@ function resolveCommand(message: MetaMessage): string | null {
   const id =
     message.interactive?.button_reply?.id ?? message.interactive?.list_reply?.id ?? null;
   if (!id) return null;
+  if (id.startsWith("order:")) {
+    const parts = id.split(":");
+    if (parts.length === 3) return `order ${parts[1]} 1 ${parts[2]}lb`;
+  }
   return BUTTON_COMMANDS[id] ?? null;
 }
 

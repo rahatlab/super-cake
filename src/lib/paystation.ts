@@ -14,6 +14,7 @@
 import { getStore } from "@/lib/store";
 import { SITE } from "@/lib/constants";
 import type { Order } from "@/lib/types";
+import { notifyAdminNewOrder, notifyOrderConfirmation } from "@/lib/whatsapp";
 
 const SANDBOX_BASE = "https://sandbox.paystation.com.bd";
 const LIVE_BASE = "https://api.paystation.com.bd";
@@ -326,5 +327,32 @@ export async function settlePayStationOrder(
   }
 
   const settled = await store.getOrderById(order.id).catch(() => null);
-  return { ok: true, reason: "paid", order: settled ?? order };
+  const finalOrder = settled ?? order;
+
+  // Send the admin + customer WhatsApp confirmation exactly once, only after
+  // the gateway has confirmed payment. The timestamp makes IPN + callback
+  // races idempotent.
+  if (!finalOrder.confirmation_sent_at) {
+    try {
+      const settings = await store.getSettings();
+      await store.updateOrder(finalOrder.id, {
+        confirmation_sent_at: new Date().toISOString(),
+      });
+      await Promise.allSettled([
+        notifyAdminNewOrder(settings.whatsapp_phone, finalOrder.order_no, finalOrder.total, finalOrder.id),
+        notifyOrderConfirmation({ order: finalOrder }),
+      ]);
+      await store
+        .createNotification({
+          type: "payment",
+          title: "PayStation পেমেন্ট সফল",
+          message: `${finalOrder.order_no} — ${finalOrder.customer_name} ৳${finalOrder.total} পেমেন্ট করেছেন।`,
+        })
+        .catch(() => undefined);
+    } catch (e) {
+      console.error("[paystation] confirmation notify failed", invoice, (e as Error).message);
+    }
+  }
+
+  return { ok: true, reason: "paid", order: finalOrder };
 }

@@ -152,6 +152,8 @@ export const cakeSchema = z.object({
   is_featured: z.boolean().default(false),
   is_active: z.boolean().default(true),
   stock: z.number().int().min(0).max(100000).default(10),
+  image_fit: z.enum(["cover", "contain"]).default("contain"),
+  image_position: z.enum(["center", "top", "bottom"]).default("center"),
   sizes: z
     .array(
       z.object({

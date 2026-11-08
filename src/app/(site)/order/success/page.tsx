@@ -77,7 +77,9 @@ export default async function OrderSuccessPage({
           ধন্যবাদ <strong className="text-fg">{order.customer_name}</strong> — আপনার অর্ডার আমরা পেয়েছি।
           {order.payment_method === "bkash" && order.payment_status === "pending_verify"
             ? " TrxID যাচাই করে WhatsApp এ জানানো হবে।"
-            : " কনফার্মেশন WhatsApp এ পাঠানো হবে।"}
+            : order.payment_method === "paystation" && order.payment_status !== "paid"
+              ? " পেমেন্ট সফল হলে কনফার্মেশন WhatsApp এ পাঠানো হবে।"
+              : " কনফার্মেশন WhatsApp এ পাঠানো হবে।"}
         </p>
       </div>
 

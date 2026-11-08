@@ -115,7 +115,7 @@ export default async function CakeDetailPage({ params }: Ctx) {
 
       <div className="grid gap-8 lg:grid-cols-2">
         <div className="lg:sticky lg:top-24 lg:self-start">
-          <CakeGallery images={cake.image_urls} name={cake.name} />
+          <CakeGallery images={cake.image_urls} name={cake.name} fit={cake.image_fit ?? "contain"} position={cake.image_position ?? "center"} />
         </div>
 
         <div>

@@ -222,13 +222,13 @@ function findCake(cakes: Cake[], query: string): Cake | null {
 }
 
 /** Professional details card for a matched cake. */
-function cakeDetailsReply(cake: Cake): string {
+function cakeDetailsReply(cake: Cake): AutoReply {
   const sizes = (cake.sizes ?? []).filter((s) => s.is_available);
   const sizeLines = sizes.length
     ? ["*সাইজ ও দাম:*", ...sizes.map((s) => `• ${s.weight} lb — ${formatBDT(s.price)}`)]
     : [`*দাম:* ${formatBDT(cake.base_price)}`];
 
-  return [
+  const body = [
     `*${cake.name}*`,
     cake.description ? cake.description.slice(0, 280) : "",
     "",
@@ -240,6 +240,17 @@ function cakeDetailsReply(cake: Cake): string {
     `*অর্ডার করুন:* order ${cake.name} 1`,
     `*বিস্তারিত দেখুন:* ${SITE.url}/cakes/${cake.slug}`,
   ].join("\n");
+
+  const buttons: WsButton[] = sizes.slice(0, 3).map((s) => ({
+    id: `order:${cake.slug}:${s.weight}`,
+    title: `${s.weight} lb`,
+  }));
+
+  return {
+    text: body,
+    fallbackText: body,
+    buttons: buttons.length ? buttons : undefined,
+  };
 }
 
 /** No (or no matching) cake: suggest what the shop actually has. */
@@ -706,7 +717,7 @@ export async function buildAutoReply({ text, from }: AutoReplyInput): Promise<Au
     if (!MENU_KEYWORDS.has(lower)) {
       const cakes = (await store.listCakes()).filter((c) => c.is_active);
       const cake = findCake(cakes, lower);
-      if (cake) return plain(cakeDetailsReply(cake));
+      if (cake) return cakeDetailsReply(cake);
     }
 
     if (lower === "2" || has(lower, ["cakes", "cake", "menu", "কেক"])) {

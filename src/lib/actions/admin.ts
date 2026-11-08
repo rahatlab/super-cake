@@ -118,6 +118,8 @@ export async function saveCakeAction(_prev: ActionState, fd: FormData): Promise<
     is_featured: fd.get("is_featured") === "on",
     is_active: fd.get("is_active") === "on",
     stock: Number(fd.get("stock") ?? 0),
+    image_fit: String(fd.get("image_fit") ?? "contain"),
+    image_position: String(fd.get("image_position") ?? "center"),
     sizes: parseSizes(fd),
   });
 
@@ -342,6 +344,14 @@ export async function verifyPaymentAction(orderId: string, approve: boolean): Pr
 
     await store.updatePayment(payment.id, { status: "paid", verified_by: "admin" });
     await store.updateOrder(orderId, { payment_status: "paid" });
+
+    await store
+      .createNotification({
+        type: "payment",
+        title: "পেমেন্ট ভেরিফাই হয়েছে",
+        message: `${order.order_no} — ${order.customer_name} এর bKash পেমেন্ট ভেরিফাই করা হয়েছে।`,
+      })
+      .catch(() => undefined);
 
     if (order.order_status === "pending") {
       await store.updateOrder(orderId, { order_status: "confirmed" });

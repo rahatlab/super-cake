@@ -201,7 +201,7 @@ export function PromoManager({ promos, now }: { promos: PromoCode[]; now: number
                 defaultValue={editing?.max_discount ?? 0}
                 className="field"
               />
-              <p className="mt-1 text-[11px] text-muted">০ = কোনো সীমা নেই</p>
+              <p className="mt-1 text-[11px] text-muted">খালি রাখুন / 0 = সীমা নেই — 10% হলে পুরো 10% ছাড় পাবে</p>
             </div>
             <div>
               <label htmlFor="promo-limit" className="label">

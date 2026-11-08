@@ -20,14 +20,21 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAdminBadges, type AdminBadges } from "@/components/admin/realtime-badges";
 
-const LINKS = [
+const LINKS: {
+  href: string;
+  label: string;
+  bn: string;
+  icon: typeof LayoutDashboard;
+  badge?: keyof AdminBadges;
+}[] = [
   { href: "/admin", label: "Overview", bn: "সারসংক্ষেপ", icon: LayoutDashboard },
-  { href: "/admin/orders", label: "Orders", bn: "অর্ডার", icon: ClipboardList },
+  { href: "/admin/orders", label: "Orders", bn: "অর্ডার", icon: ClipboardList, badge: "pendingOrders" },
   { href: "/admin/cakes", label: "Cakes", bn: "কেক", icon: CakeSlice },
-  { href: "/admin/payments", label: "Payments", bn: "পেমেন্ট", icon: Wallet },
+  { href: "/admin/payments", label: "Payments", bn: "পেমেন্ট", icon: Wallet, badge: "pendingPayments" },
   { href: "/admin/promos", label: "Promos", bn: "প্রোমো", icon: Percent },
-  { href: "/admin/reviews", label: "Reviews", bn: "রিভিউ", icon: Star },
+  { href: "/admin/reviews", label: "Reviews", bn: "রিভিউ", icon: Star, badge: "pendingReviews" },
   { href: "/admin/blog", label: "Blog", bn: "ব্লগ", icon: FileText },
   { href: "/admin/banners", label: "Banner", bn: "ব্যানার", icon: Megaphone },
   { href: "/admin/whatsapp", label: "WhatsApp", bn: "মেসেজ", icon: MessageCircle },
@@ -40,12 +47,21 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+function NavList({
+  pathname,
+  badges,
+  onNavigate,
+}: {
+  pathname: string;
+  badges: AdminBadges;
+  onNavigate?: () => void;
+}) {
   return (
     <nav className="flex flex-col gap-1" aria-label="Admin navigation">
       {LINKS.map((link) => {
         const active = isActive(pathname, link.href);
         const Icon = link.icon;
+        const count = link.badge ? badges[link.badge] : 0;
         return (
           <Link
             key={link.href}
@@ -69,6 +85,11 @@ function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: () =
             )}
             <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
             <span className="flex-1">{link.label}</span>
+            {count > 0 && (
+              <span className="grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[10px] font-extrabold text-brand-fg">
+                {count}
+              </span>
+            )}
             <span className="text-xs font-medium text-muted/80">{link.bn}</span>
           </Link>
         );
@@ -77,8 +98,15 @@ function NavList({ pathname, onNavigate }: { pathname: string; onNavigate?: () =
   );
 }
 
-function SidebarBody({ unread, onNavigate }: { unread: number; onNavigate?: () => void }) {
+function SidebarBody({
+  badges,
+  onNavigate,
+}: {
+  badges: AdminBadges;
+  onNavigate?: () => void;
+}) {
   const pathname = usePathname();
+  const unread = badges.unread;
   return (
     <div className="flex h-full flex-col gap-4 p-4">
       <div className="flex items-center justify-between gap-2 px-1">
@@ -114,7 +142,7 @@ function SidebarBody({ unread, onNavigate }: { unread: number; onNavigate?: () =
       </Link>
 
       <div className="flex-1 overflow-y-auto">
-        <NavList pathname={pathname} onNavigate={onNavigate} />
+        <NavList pathname={pathname} badges={badges} onNavigate={onNavigate} />
       </div>
 
       <p className="px-1 text-xs text-muted">© Super Cake — Admin Panel</p>
@@ -128,6 +156,12 @@ function SidebarBody({ unread, onNavigate }: { unread: number; onNavigate?: () =
  */
 export function AdminSidebar({ unread }: { unread: number }) {
   const [open, setOpen] = useState(false);
+  const badges = useAdminBadges({
+    unread,
+    pendingReviews: 0,
+    pendingPayments: 0,
+    pendingOrders: 0,
+  });
 
   // Lock background scrolling while the mobile drawer is open.
   useEffect(() => {
@@ -157,7 +191,7 @@ export function AdminSidebar({ unread }: { unread: number }) {
 
       {/* desktop sidebar */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-line bg-surface lg:block">
-        <SidebarBody unread={unread} />
+        <SidebarBody badges={badges} />
       </aside>
 
       {/* mobile drawer */}
@@ -191,7 +225,7 @@ export function AdminSidebar({ unread }: { unread: number }) {
               >
                 <X className="h-4 w-4" aria-hidden />
               </button>
-              <SidebarBody unread={unread} onNavigate={() => setOpen(false)} />
+              <SidebarBody badges={badges} onNavigate={() => setOpen(false)} />
             </motion.aside>
           </>
         )}

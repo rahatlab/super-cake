@@ -45,6 +45,9 @@ export interface CakeSize {
   is_available: boolean;
 }
 
+export type CakeImageFit = "cover" | "contain";
+export type CakeImagePosition = "center" | "top" | "bottom";
+
 export interface Cake {
   id: string;
   name: string;
@@ -62,6 +65,10 @@ export interface Cake {
   stock: number;
   created_at: string;
   sizes?: CakeSize[];
+  /** How the gallery frames the image. `contain` shows the full cake. */
+  image_fit?: CakeImageFit;
+  /** Vertical anchor for `cover` mode. */
+  image_position?: CakeImagePosition;
 }
 
 export interface OrderItem {
@@ -117,6 +124,8 @@ export interface Order {
   note?: string;
   review_requested_at?: string | null;
   idempotency_key?: string | null;
+  /** Set when the admin/customer WhatsApp confirmation has been sent. */
+  confirmation_sent_at?: string | null;
   /** 🚩 admin marks suspected fake/prank orders. */
   is_flagged?: boolean;
   created_at: string;

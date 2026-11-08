@@ -158,6 +158,8 @@ export function buildSeedCakes(): Cake[] {
       stock: i === 4 ? 0 : 12,
       created_at: iso(-30 + i),
       sizes: sizeRows(id, c.base),
+      image_fit: "contain",
+      image_position: "center",
     };
   });
 }
