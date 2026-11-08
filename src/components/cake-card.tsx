@@ -3,11 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Plus } from "lucide-react";
+import { Add01Icon } from "@animateicons/react/huge";
 import type { Cake } from "@/lib/types";
 import { formatBDT, weightLabel } from "@/lib/utils";
 import { useCart } from "@/components/cart/cart-context";
 import { Stars } from "@/components/star-rating";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 export function CakeCard({
   cake,
@@ -22,6 +23,9 @@ export function CakeCard({
   priority?: boolean;
 }) {
   const { add } = useCart();
+  // AnimateIcons refs — icons only animate when driven from the card/button hover.
+  const hoverAddIcon = useAnimIcon();
+  const quickAddIcon = useAnimIcon();
 
   const available = cake.sizes?.filter((s) => s.is_available) ?? [];
   const first = available[0];
@@ -70,9 +74,11 @@ export function CakeCard({
         {!soldOut && (
           <motion.span
             aria-hidden
+            onMouseEnter={() => hoverAddIcon.current?.startAnimation()}
+            onMouseLeave={() => hoverAddIcon.current?.stopAnimation()}
             className="absolute bottom-3 right-3 grid h-11 w-11 place-items-center rounded-full bg-brand text-brand-fg opacity-0 shadow-lift transition-opacity duration-300 group-hover:opacity-100"
           >
-            <Plus className="h-5 w-5" />
+            <Add01Icon ref={hoverAddIcon} className="h-5 w-5" />
           </motion.span>
         )}
       </Link>
@@ -112,10 +118,12 @@ export function CakeCard({
             type="button"
             onClick={quickAdd}
             disabled={soldOut}
+            onMouseEnter={() => quickAddIcon.current?.startAnimation()}
+            onMouseLeave={() => quickAddIcon.current?.stopAnimation()}
             className="btn btn-soft btn-sm"
             aria-label={`${cake.name} কার্টে দিন`}
           >
-            <Plus className="h-3.5 w-3.5" /> যোগ
+            <Add01Icon ref={quickAddIcon} className="h-3.5 w-3.5" /> যোগ
           </button>
         </div>
       </div>

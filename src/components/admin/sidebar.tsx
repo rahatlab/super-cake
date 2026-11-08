@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Bell,
   CakeSlice,
   ClipboardList,
   FileText,
@@ -15,30 +14,31 @@ import {
   MessageCircle,
   Percent,
   Settings as SettingsIcon,
-  Star,
-  Wallet,
   X,
 } from "lucide-react";
+import type { ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import { useAdminBadges, type AdminBadges } from "@/components/admin/realtime-badges";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { Wallet01Icon, StarIcon, BellRingIcon } from "@animateicons/react/huge";
 
 const LINKS: {
   href: string;
   label: string;
   bn: string;
-  icon: typeof LayoutDashboard;
+  icon: ComponentType<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
   badge?: keyof AdminBadges;
 }[] = [
   { href: "/admin", label: "Overview", bn: "সারসংক্ষেপ", icon: LayoutDashboard },
   { href: "/admin/orders", label: "Orders", bn: "অর্ডার", icon: ClipboardList, badge: "pendingOrders" },
   { href: "/admin/cakes", label: "Cakes", bn: "কেক", icon: CakeSlice },
-  { href: "/admin/payments", label: "Payments", bn: "পেমেন্ট", icon: Wallet, badge: "pendingPayments" },
+  { href: "/admin/payments", label: "Payments", bn: "পেমেন্ট", icon: Wallet01Icon, badge: "pendingPayments" },
   { href: "/admin/promos", label: "Promos", bn: "প্রোমো", icon: Percent },
-  { href: "/admin/reviews", label: "Reviews", bn: "রিভিউ", icon: Star, badge: "pendingReviews" },
+  { href: "/admin/reviews", label: "Reviews", bn: "রিভিউ", icon: StarIcon, badge: "pendingReviews" },
   { href: "/admin/blog", label: "Blog", bn: "ব্লগ", icon: FileText },
   { href: "/admin/banners", label: "Banner", bn: "ব্যানার", icon: Megaphone },
   { href: "/admin/whatsapp", label: "WhatsApp", bn: "মেসেজ", icon: MessageCircle },
-  { href: "/admin/notifications", label: "Notifications", bn: "নোটিফিকেশন", icon: Bell },
+  { href: "/admin/notifications", label: "Notifications", bn: "নোটিফিকেশন", icon: BellRingIcon },
   { href: "/admin/settings", label: "Settings", bn: "সেটিংস", icon: SettingsIcon },
 ];
 
@@ -83,7 +83,7 @@ function NavList({
                 transition={{ type: "spring", stiffness: 420, damping: 32 }}
               />
             )}
-            <Icon className="h-[18px] w-[18px] shrink-0" aria-hidden />
+            <NavIconItem icon={Icon} className="h-[18px] w-[18px] shrink-0" aria-hidden />
             <span className="flex-1">{link.label}</span>
             {count > 0 && (
               <span className="grid h-5 min-w-5 place-items-center rounded-full bg-brand px-1 text-[10px] font-extrabold text-brand-fg">
@@ -128,7 +128,7 @@ function SidebarBody({
         onClick={onNavigate}
         className="flex items-center gap-2 rounded-xl border border-line bg-bg px-3 py-2 text-sm transition-colors hover:border-brand/40 hover:bg-brand/5"
       >
-        <Bell className="h-4 w-4 text-brand-strong" aria-hidden />
+        <BellRingIcon className="h-4 w-4 text-brand-strong" aria-hidden />
         <span className="font-semibold text-muted">নতুন নোটিফিকেশন</span>
         <span
           className={cn(
@@ -231,5 +231,32 @@ export function AdminSidebar({ unread }: { unread: number }) {
         )}
       </AnimatePresence>
     </>
+  );
+}
+
+/**
+ * Renders a nav icon inside the link so hovering the whole link plays the
+ * AnimateIcons animation (docs: "Menus & navigation" / "Buttons & tooltips").
+ * Lucide icons still render (ref is forwarded) but only AnimateIcons icons
+ * actually animate through the ref.
+ */
+function NavIconItem({
+  icon: Icon,
+  className,
+  ...rest
+}: {
+  icon: ComponentType<any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+  className?: string;
+  [key: string]: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+}) {
+  const ref = useAnimIcon();
+  return (
+    <Icon
+      ref={ref}
+      className={className}
+      onMouseEnter={() => ref.current?.startAnimation()}
+      onMouseLeave={() => ref.current?.stopAnimation()}
+      {...rest}
+    />
   );
 }
