@@ -86,7 +86,7 @@ create table if not exists orders (
   referral_discount integer not null default 0,
   delivery_charge   integer not null default 0,
   total             integer not null default 0,
-  payment_method    text not null default 'cod' check (payment_method in ('cod','bkash')),
+  payment_method    text not null default 'cod' check (payment_method in ('cod','bkash','paystation')),
   payment_status    text not null default 'unpaid' check (payment_status in ('unpaid','pending_verify','paid','refunded')),
   bkash_trx_id      text,
   order_status      text not null default 'pending'
@@ -111,7 +111,7 @@ create index if not exists orders_flagged_idx on orders (is_flagged) where is_fl
 create table if not exists payments (
   id          text primary key default ('pay_' || substr(md5(random()::text), 1, 12)),
   order_id    text not null references orders(id) on delete cascade,
-  method      text not null check (method in ('cod','bkash')),
+  method      text not null check (method in ('cod','bkash','paystation')),
   amount      integer not null default 0,
   trx_id      text,
   status      text not null default 'pending_verify'

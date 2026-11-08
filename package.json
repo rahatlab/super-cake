@@ -17,6 +17,7 @@
     "db:reset": "node -e \"require('fs').rmSync('.data',{recursive:true,force:true});console.log('demo data reset — restart dev server to reseed')\""
   },
   "dependencies": {
+    "@animateicons/react": "^0.13.0",
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.2",
     "@supabase/ssr": "^0.12.7",

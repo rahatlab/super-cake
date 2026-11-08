@@ -29,6 +29,9 @@ import {
   type SyrupId,
 } from "@/lib/custom-design";
 import dynamic from "next/dynamic";
+import { OrderLoadingOverlay } from "@/components/order/order-loading-overlay";
+import { CreditCardIcon, PhoneIcon, Wallet01Icon } from "@animateicons/react/huge";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 // Three.js cannot render on the server — load the canvas client-side only.
 const Cake3DPreview = dynamic(
@@ -85,6 +88,10 @@ export function CustomOrderForm({
   const [payment, setPayment] = useState<"cod" | "bkash" | "paystation">(
     settings.cod_enabled ? "cod" : settings.bkash_enabled ? "bkash" : "paystation",
   );
+  // Payment tiles play their icon while the tile itself is hovered.
+  const codIcon = useAnimIcon();
+  const bkashIcon = useAnimIcon();
+  const paystationIcon = useAnimIcon();
   const [reminderOptIn, setReminderOptIn] = useState(false);
 
   // 3D Preview states
@@ -100,7 +107,13 @@ export function CustomOrderForm({
   const [cut, setCut] = useState(0);
 
   const [promoInput, setPromoInput] = useState("");
-  const [promo, setPromo] = useState<{ ok: boolean; discount: number; msg: string } | null>(null);
+  const [promo, setPromo] = useState<{
+    ok: boolean;
+    discount: number;
+    msg: string;
+    percent?: number;
+    maxDiscount?: number;
+  } | null>(null);
   const [promoLoading, setPromoLoading] = useState(false);
 
   const selected = sizes.find((s) => Math.abs(s.weight - weight) < 0.01) ?? sizes[0];
@@ -113,7 +126,15 @@ export function CustomOrderForm({
   const subtotal = selected.price + extras;
 
   const totals = useMemo(() => {
-    const discount = promo?.ok ? promo.discount : 0;
+    const discount =
+      promo?.ok && promo.percent != null
+        ? Math.min(
+            Math.round((subtotal * promo.percent) / 100),
+            promo.maxDiscount && promo.maxDiscount > 0 ? promo.maxDiscount : Infinity,
+          )
+        : promo?.ok
+          ? promo.discount
+          : 0;
     const afterPromo = Math.max(0, subtotal - discount);
     const delivery = !settings.free_delivery_enabled
       ? settings.delivery_charge
@@ -133,7 +154,11 @@ export function CustomOrderForm({
       setPromo({
         ok: res.ok,
         discount: res.discount,
-        msg: res.ok ? `✅ ৳${res.discount} ছাড় পেয়েছেন!` : `❌ ${res.reason}`,
+        msg: res.ok
+          ? `✅ ${res.percent ?? ""}% × ৳${subtotal} = ৳${res.discount} ছাড় পেয়েছেন!`
+          : `❌ ${res.reason}`,
+        percent: res.percent,
+        maxDiscount: res.maxDiscount,
       });
     } finally {
       setPromoLoading(false);
@@ -601,6 +626,8 @@ export function CustomOrderForm({
           <div className="grid gap-3 sm:grid-cols-2">
             {settings.cod_enabled && (
               <label
+                onMouseEnter={() => codIcon.current?.startAnimation()}
+                onMouseLeave={() => codIcon.current?.stopAnimation()}
                 className="cursor-pointer rounded-2xl border-2 bg-surface p-4"
                 style={{
                   borderColor: payment === "cod" ? "hsl(var(--brand))" : "hsl(var(--border))",
@@ -608,13 +635,15 @@ export function CustomOrderForm({
                 }}
               >
                 <input type="radio" name="payment_ui" checked={payment === "cod"} onChange={() => setPayment("cod")} className="sr-only" />
-                <span className="text-xl">💵</span>
+                <Wallet01Icon ref={codIcon} size={22} />
                 <p className="mt-1.5 text-sm font-extrabold">Cash on Delivery</p>
               </label>
             )}
 
             {settings.bkash_enabled && (
               <label
+                onMouseEnter={() => bkashIcon.current?.startAnimation()}
+                onMouseLeave={() => bkashIcon.current?.stopAnimation()}
                 className="cursor-pointer rounded-2xl border-2 bg-surface p-4"
                 style={{
                   borderColor: payment === "bkash" ? "hsl(var(--brand))" : "hsl(var(--border))",
@@ -622,13 +651,15 @@ export function CustomOrderForm({
                 }}
               >
                 <input type="radio" name="payment_ui" checked={payment === "bkash"} onChange={() => setPayment("bkash")} className="sr-only" />
-                <span className="text-xl">📱</span>
+                <PhoneIcon ref={bkashIcon} size={22} />
                 <p className="mt-1.5 text-sm font-extrabold">bKash (Send Money)</p>
               </label>
             )}
 
             {paystationEnabled && (
               <label
+                onMouseEnter={() => paystationIcon.current?.startAnimation()}
+                onMouseLeave={() => paystationIcon.current?.stopAnimation()}
                 className="cursor-pointer rounded-2xl border-2 bg-surface p-4"
                 style={{
                   borderColor: payment === "paystation" ? "hsl(var(--brand))" : "hsl(var(--border))",
@@ -636,7 +667,7 @@ export function CustomOrderForm({
                 }}
               >
                 <input type="radio" name="payment_ui" checked={payment === "paystation"} onChange={() => setPayment("paystation")} className="sr-only" />
-                <span className="text-xl">💳</span>
+                <CreditCardIcon ref={paystationIcon} size={22} />
                 <p className="mt-1.5 text-sm font-extrabold">কার্ড / মোবাইল ওয়ালেট</p>
               </label>
             )}
@@ -662,8 +693,8 @@ export function CustomOrderForm({
           <div>
             <label className="label" htmlFor="promo">Promo Code (ঐচ্ছিক)</label>
             <div className="flex gap-2">
-              <input id="promo" className="field uppercase" placeholder="WELCOME10" value={promoInput} onChange={(e) => setPromoInput(e.target.value)} />
-              <button type="button" onClick={applyPromo} disabled={promoLoading} className="btn btn-soft">
+              <input id="promo" className="field min-w-0 flex-1 uppercase" placeholder="WELCOME10" value={promoInput} onChange={(e) => setPromoInput(e.target.value)} />
+              <button type="button" onClick={applyPromo} disabled={promoLoading} className="btn btn-soft shrink-0">
                 {promoLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Percent className="h-4 w-4" />}
                 Apply
               </button>
@@ -677,11 +708,19 @@ export function CustomOrderForm({
             </AnimatePresence>
           </div>
 
-          <button type="submit" disabled={pending || (!settings.cod_enabled && !settings.bkash_enabled)} className="btn btn-primary btn-lg btn-block whitespace-normal sm:whitespace-nowrap">
-            {pending ? <><Loader2 className="h-4 w-4 animate-spin" /> অর্ডার পাঠানো হচ্ছে…</> : <><Send className="h-4 w-4" /> Custom Cake অর্ডার করুন</>}
+          <button type="submit" disabled={pending || (!settings.cod_enabled && !settings.bkash_enabled)} className="btn btn-primary btn-lg btn-block min-w-0 whitespace-normal text-center leading-snug">
+            {pending ? <><Loader2 className="h-4 w-4 animate-spin" /> অর্ডার পাঠানো হচ্ছে…</> : <><Send className="h-4 w-4 shrink-0" /> Custom Cake অর্ডার করুন</>}
           </button>
         </section>
       </div>
+      <OrderLoadingOverlay
+        show={pending}
+        message={
+          payment === "paystation"
+            ? "PayStation পেমেন্ট পেজে পাঠানো হচ্ছে…"
+            : "অর্ডার প্রসেস হচ্ছে…"
+        }
+      />
 
       {/* Right: 3D Live Preview */}
       <aside className="lg:sticky lg:top-24 lg:self-start">
@@ -768,6 +807,11 @@ export function CustomOrderForm({
               <span className="text-muted">Promo</span>
               <span className="font-semibold text-success">− {formatBDT(totals.discount)}</span>
             </div>
+          )}
+          {totals.discount > 0 && promo?.percent != null && (
+            <p className="text-right text-[11px] font-semibold text-success">
+              {promo.percent}% × {formatBDT(subtotal)} = {formatBDT(totals.discount)}
+            </p>
           )}
           <div className="flex justify-between text-sm">
             <span className="text-muted">Delivery</span>

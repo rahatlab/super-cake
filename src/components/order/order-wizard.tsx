@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useActionState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -29,6 +29,9 @@ import {
 } from "@/lib/actions/order";
 import { useCart } from "@/components/cart/cart-context";
 import { AnimatedNumber } from "@/components/reveal";
+import { OrderLoadingOverlay } from "@/components/order/order-loading-overlay";
+import { CreditCardIcon, LockKeyholeIcon, PhoneIcon, Wallet01Icon } from "@animateicons/react/huge";
+import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 const STEPS = ["Occasion", "Cake Details", "Delivery", "Payment"];
 
@@ -39,6 +42,9 @@ interface PromoState {
   discount: number;
   message: string;
   ok: boolean;
+  percent?: number;
+  maxDiscount?: number;
+  minOrder?: number;
 }
 
 interface ReferralState {
@@ -103,6 +109,11 @@ export function OrderWizard({
   const [payment, setPayment] = useState<"cod" | "bkash" | "paystation">(
     settings.cod_enabled ? "cod" : settings.bkash_enabled ? "bkash" : "paystation",
   );
+  // Payment tiles play their icon while the tile itself is hovered.
+  const codIcon = useAnimIcon();
+  const bkashIcon = useAnimIcon();
+  const paystationIcon = useAnimIcon();
+  const confirmIcon = useAnimIcon();
   const [reminderOptIn, setReminderOptIn] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
 
@@ -110,7 +121,16 @@ export function OrderWizard({
 
   /* ---------- live totals (mirrors server logic) ---------- */
   const totals = useMemo(() => {
-    const discount = promo?.ok ? promo.discount : 0;
+    // Recompute from percent/max so qty changes update the discount live.
+    const discount =
+      promo?.ok && promo.percent != null
+        ? Math.min(
+            Math.round((subtotal * promo.percent) / 100),
+            promo.maxDiscount && promo.maxDiscount > 0 ? promo.maxDiscount : Infinity,
+          )
+        : promo?.ok
+          ? promo.discount
+          : 0;
     const afterPromo = Math.max(0, subtotal - discount);
     const referralValid = Boolean(referral?.ok);
     const referralDiscount = referralValid
@@ -153,14 +173,50 @@ export function OrderWizard({
       setPromo({
         code: promoInput.trim().toUpperCase(),
         discount: res.discount,
-        message: res.ok ? `✅ ৳${res.discount} ছাড় পেয়েছেন!` : `❌ ${res.reason}`,
+        message: res.ok
+          ? `✅ ${res.percent ?? ""}% × ৳${subtotal} = ৳${res.discount} ছাড় পেয়েছেন!`
+          : `❌ ${res.reason}`,
         ok: res.ok,
+        percent: res.percent,
+        maxDiscount: res.maxDiscount,
+        minOrder: res.minOrder,
       });
       if (res.ok) setPromoInput(promoInput.trim().toUpperCase());
     } finally {
       setPromoLoading(false);
     }
   };
+
+  // Re-validate an applied promo when the cart subtotal changes (qty edits).
+  useEffect(() => {
+    if (!promo?.ok || !promo.code) return;
+    const t = setTimeout(async () => {
+      const res = await validatePromoAction(promo.code, subtotal);
+      if (!res.ok) {
+        setPromo({
+          code: promo.code,
+          discount: 0,
+          message: `❌ ${res.reason}`,
+          ok: false,
+        });
+      } else if (res.discount !== promo.discount) {
+        setPromo((p) =>
+          p
+            ? {
+                ...p,
+                discount: res.discount,
+                message: `✅ ${res.percent ?? ""}% × ৳${subtotal} = ৳${res.discount} ছাড় পেয়েছেন!`,
+                percent: res.percent,
+                maxDiscount: res.maxDiscount,
+                minOrder: res.minOrder,
+              }
+            : p,
+        );
+      }
+    }, 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtotal]);
 
   const applyReferral = async () => {
     if (!referralInput.trim()) return;
@@ -683,7 +739,7 @@ export function OrderWizard({
                 <div className="flex gap-2">
                   <input
                     id="promo"
-                    className="field uppercase"
+                    className="field min-w-0 flex-1 uppercase"
                     placeholder="যেমন: WELCOME10"
                     value={promoInput}
                     onChange={(e) => {
@@ -692,7 +748,7 @@ export function OrderWizard({
                     }}
                     onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), applyPromo())}
                   />
-                  <button type="button" onClick={applyPromo} disabled={promoLoading} className="btn btn-soft">
+                  <button type="button" onClick={applyPromo} disabled={promoLoading} className="btn btn-soft shrink-0">
                     {promoLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
@@ -722,7 +778,7 @@ export function OrderWizard({
                 <div className="flex gap-2">
                   <input
                     id="ref"
-                    className="field uppercase"
+                    className="field min-w-0 flex-1 uppercase"
                     placeholder="বন্ধুর কোড দিলে ৫% ছাড়"
                     value={referralInput}
                     onChange={(e) => {
@@ -735,7 +791,7 @@ export function OrderWizard({
                     type="button"
                     onClick={applyReferral}
                     disabled={referralLoading}
-                    className="btn btn-soft"
+                    className="btn btn-soft shrink-0"
                   >
                     {referralLoading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -767,6 +823,8 @@ export function OrderWizard({
               <div className="grid gap-3 sm:grid-cols-2">
                 {settings.cod_enabled && (
                   <label
+                    onMouseEnter={() => codIcon.current?.startAnimation()}
+                    onMouseLeave={() => codIcon.current?.stopAnimation()}
                     className="cursor-pointer rounded-2xl border-2 bg-surface p-4 transition-colors"
                     style={{
                       borderColor: payment === "cod" ? "hsl(var(--brand))" : "hsl(var(--border))",
@@ -781,7 +839,7 @@ export function OrderWizard({
                       onChange={() => setPayment("cod")}
                       className="sr-only"
                     />
-                    <span className="text-xl">💵</span>
+                    <Wallet01Icon ref={codIcon} size={22} />
                     <p className="mt-1.5 text-sm font-extrabold">Cash on Delivery</p>
                     <p className="text-xs text-muted">হাতে পেয়ে টাকা দিন</p>
                   </label>
@@ -789,6 +847,8 @@ export function OrderWizard({
 
                 {settings.bkash_enabled && (
                   <label
+                    onMouseEnter={() => bkashIcon.current?.startAnimation()}
+                    onMouseLeave={() => bkashIcon.current?.stopAnimation()}
                     className="cursor-pointer rounded-2xl border-2 bg-surface p-4 transition-colors"
                     style={{
                       borderColor: payment === "bkash" ? "hsl(var(--brand))" : "hsl(var(--border))",
@@ -803,7 +863,7 @@ export function OrderWizard({
                       onChange={() => setPayment("bkash")}
                       className="sr-only"
                     />
-                    <span className="text-xl">📱</span>
+                    <PhoneIcon ref={bkashIcon} size={22} />
                     <p className="mt-1.5 text-sm font-extrabold">bKash (Send Money)</p>
                     <p className="text-xs text-muted">TrxID সাবমিট করুন</p>
                   </label>
@@ -811,6 +871,8 @@ export function OrderWizard({
 
                 {paystationEnabled && (
                   <label
+                    onMouseEnter={() => paystationIcon.current?.startAnimation()}
+                    onMouseLeave={() => paystationIcon.current?.stopAnimation()}
                     className="cursor-pointer rounded-2xl border-2 bg-surface p-4 transition-colors"
                     style={{
                       borderColor: payment === "paystation" ? "hsl(var(--brand))" : "hsl(var(--border))",
@@ -825,7 +887,7 @@ export function OrderWizard({
                       onChange={() => setPayment("paystation")}
                       className="sr-only"
                     />
-                    <span className="text-xl">💳</span>
+                    <CreditCardIcon ref={paystationIcon} size={22} />
                     <p className="mt-1.5 text-sm font-extrabold">কার্ড / মোবাইল ওয়ালেট</p>
                     <p className="text-xs text-muted">bKash · Nagad · Rocket · Visa — PayStation দিয়ে</p>
                   </label>
@@ -843,12 +905,12 @@ export function OrderWizard({
           </section>
 
           {/* ------------- nav buttons ------------- */}
-          <div className="mt-6 flex items-center justify-between gap-3">
+          <div className="mt-6 flex min-w-0 flex-col-reverse gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <button
               type="button"
               onClick={goBack}
               disabled={step === 0 || pending}
-              className="btn btn-ghost"
+              className="btn btn-ghost w-full justify-center sm:w-auto"
             >
               <ArrowLeft className="h-4 w-4" /> আগের ধাপ
             </button>
@@ -858,7 +920,7 @@ export function OrderWizard({
                 type="button"
                 onClick={goNext}
                 disabled={nextDisabled || pending}
-                className="btn btn-primary btn-lg"
+                className="btn btn-primary btn-lg w-full justify-center sm:w-auto"
               >
                 পরের ধাপ <ArrowRight className="h-4 w-4" />
               </button>
@@ -867,7 +929,9 @@ export function OrderWizard({
                 type="button"
                 onClick={() => formRef.current?.requestSubmit()}
                 disabled={pending || (!settings.cod_enabled && !settings.bkash_enabled)}
-                className="btn btn-primary btn-lg group"
+                className="btn btn-primary btn-lg group w-full min-w-0 justify-center whitespace-normal text-center leading-snug sm:w-auto"
+                onMouseEnter={() => confirmIcon.current?.startAnimation()}
+                onMouseLeave={() => confirmIcon.current?.stopAnimation()}
               >
                 {pending ? (
                   <>
@@ -875,13 +939,22 @@ export function OrderWizard({
                   </>
                 ) : (
                   <>
-                    <Lock className="h-4 w-4" /> অর্ডার কনফার্ম করুন · {formatBDT(totals.total)}
+                    <LockKeyholeIcon ref={confirmIcon} size={16} className="shrink-0" /> অর্ডার কনফার্ম করুন ·{" "}
+                    {formatBDT(totals.total)}
                   </>
                 )}
               </button>
             )}
           </div>
         </form>
+        <OrderLoadingOverlay
+          show={pending}
+          message={
+            payment === "paystation"
+              ? "PayStation পেমেন্ট পেজে পাঠানো হচ্ছে…"
+              : "অর্ডার প্রসেস হচ্ছে…"
+          }
+        />
       </div>
 
       {/* ------------- right: summary ------------- */}
@@ -910,6 +983,11 @@ export function OrderWizard({
             <Row label="Subtotal" value={formatBDT(subtotal)} />
             {totals.discount > 0 && (
               <Row label={`Promo ${promo?.code ?? ""}`} value={`− ${formatBDT(totals.discount)}`} accent />
+            )}
+            {totals.discount > 0 && promo?.percent != null && (
+              <p className="text-right text-[11px] font-semibold text-success">
+                {promo.percent}% × {formatBDT(subtotal)} = {formatBDT(totals.discount)}
+              </p>
             )}
             {totals.referralDiscount > 0 && (
               <Row label="Referral" value={`− ${formatBDT(totals.referralDiscount)}`} accent />
