@@ -22,7 +22,7 @@ const DECORATION_LABELS: Record<NonNullable<Spec["decoration"]>, string> = {
 
 function Swatch({ color, label }: { color: string; label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5">
+    <span className="inline-flex shrink-0 items-center gap-1.5">
       <span
         className="h-3.5 w-3.5 shrink-0 rounded-full border border-black/10"
         style={{ backgroundColor: color }}
@@ -59,31 +59,31 @@ export function CustomDesignSummary({ spec }: { spec: Spec }) {
   if (!hasCustomDesign(spec)) return null;
 
   return (
-    <div className="mt-1 flex flex-wrap items-start gap-x-4 gap-y-1.5">
+    <div className="mt-1 flex flex-wrap items-start gap-x-4 gap-y-2">
     {spec.design_image_url && (
-      <a href={spec.design_image_url} target="_blank" rel="noopener noreferrer" className="shrink-0 overflow-hidden rounded-xl border border-line">
+      <a href={spec.design_image_url} target="_blank" rel="noopener noreferrer" className="shrink-0 self-start overflow-hidden rounded-xl border border-line">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={spec.design_image_url} alt="3D ডিজাইন" className="h-20 w-20 object-cover" />
       </a>
     )}
-    <p className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+    <p className="flex min-w-0 flex-1 flex-wrap items-center gap-x-5 gap-y-2">
       {spec.cake_shape && (
-        <span>
+        <span className="inline-flex shrink-0 items-center gap-1.5">
           <AnimIcon name="cake" className="h-4 w-4 shrink-0" /> <strong>আকৃতি:</strong> {SHAPE_LABELS[spec.cake_shape]}
         </span>
       )}
       {spec.tiers != null && (
-        <span>
+        <span className="inline-flex shrink-0 items-center gap-1.5">
           <AnimIcon name="box" className="h-4 w-4 shrink-0" /> <strong>টিয়ার:</strong> {spec.tiers}
         </span>
       )}
       {spec.syrup && spec.syrup !== "none" && (
-        <span>
+        <span className="inline-flex shrink-0 items-center gap-1.5">
           <AnimIcon name="cake" className="h-4 w-4 shrink-0" /> <strong>সিরাপ:</strong> {syrupLabel(spec.syrup)}
         </span>
       )}
       {spec.decoration && spec.decoration !== "none" && (
-        <span>
+        <span className="inline-flex shrink-0 items-center gap-1.5">
           <AnimIcon name="sparkles" className="h-4 w-4 shrink-0" /> <strong>সাজসজ্জা:</strong> {DECORATION_LABELS[spec.decoration]}
         </span>
       )}
@@ -92,7 +92,7 @@ export function CustomDesignSummary({ spec }: { spec: Spec }) {
       )}
       {spec.message_color && <Swatch color={spec.message_color} label="লেখার রঙ" />}
       {spec.message_font && (
-        <span>
+        <span className="inline-flex shrink-0 items-center gap-1.5">
           <AnimIcon name="note" className="h-4 w-4 shrink-0" /> <strong>ফন্ট:</strong> {getCakeFont(spec.message_font).label}
         </span>
       )}

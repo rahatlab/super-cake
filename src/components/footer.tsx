@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { useEffect, useState } from "react";
 import {
   Location01,
   Mail01,
@@ -17,6 +19,42 @@ import { AnimIcon } from "@/components/ui/anim-icon";
 
 export function Footer({ settings }: { settings: Settings }) {
   const year = new Date().getFullYear();
+  const [typed, setTyped] = useState("");
+
+  // Typewriter: "Rahat" → "Team" → "Developer Team" → loop.
+  useEffect(() => {
+    const phrases = ["Rahat", "Built with Passion", "Crafted with Code"];
+    let phrase = 0;
+    let char = 0;
+    let deleting = false;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const tick = () => {
+      const word = phrases[phrase];
+      if (!deleting) {
+        char += 1;
+        setTyped(word.slice(0, char));
+        if (char === word.length) {
+          deleting = true;
+          timer = setTimeout(tick, 1600);
+          return;
+        }
+        timer = setTimeout(tick, 90);
+      } else {
+        char -= 1;
+        setTyped(word.slice(0, char));
+        if (char === 0) {
+          deleting = false;
+          phrase = (phrase + 1) % phrases.length;
+          timer = setTimeout(tick, 350);
+          return;
+        }
+        timer = setTimeout(tick, 45);
+      }
+    };
+    timer = setTimeout(tick, 400);
+    return () => clearTimeout(timer);
+  }, []);
   const phoneIcon = useAnimIcon();
   const mailIcon = useAnimIcon();
   const locationIcon = useAnimIcon();
@@ -169,7 +207,7 @@ export function Footer({ settings }: { settings: Settings }) {
           <p>
             © {year} {settings.store_name}. সর্বস্বত্ব সংরক্ষিত।
           </p>
-          <p>Made with <AnimIcon name="cake" className="h-4 w-4 shrink-0" /> in Bangladesh</p>
+          <p>Develop By <span className="font-bold text-blue-500">{typed}<motion.span animate={{ opacity: [1, 0, 1] }} transition={{ duration: 0.9, repeat: Infinity }} className="ml-0.5 inline-block h-3 w-[2px] translate-y-0.5 bg-blue-500" aria-hidden /></span></p>
         </div>
       </div>
     </footer>
