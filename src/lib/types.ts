@@ -283,6 +283,12 @@ export interface Settings {
   free_delivery_enabled: boolean;
   cod_enabled: boolean;
   bkash_enabled: boolean;
+  /** Admin dashboard: play a sound when a new order/payment/review arrives. */
+  notification_sound_enabled?: boolean;
+  /** Admin dashboard notification sound volume, 0–100. */
+  notification_sound_volume?: number;
+  /** Per-type sound overrides (file URL + enabled + volume). */
+  notification_sounds?: Partial<Record<string, { enabled: boolean; volume: number; url?: string | null }>>;
   instagram?: string;
   facebook?: string;
   /** Extra charge for each custom tier above the included base tier. */

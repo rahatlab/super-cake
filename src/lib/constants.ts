@@ -110,6 +110,13 @@ export const DEFAULT_SETTINGS: Settings = {
   free_delivery_enabled: false,
   cod_enabled: true,
   bkash_enabled: true,
+  notification_sound_enabled: true,
+  notification_sound_volume: 50,
+  notification_sounds: {
+    order: { enabled: true, volume: 50, url: null },
+    payment: { enabled: true, volume: 50, url: null },
+    review: { enabled: true, volume: 50, url: null },
+  },
   extra_tier_fee: 300,
   syrup_prices: { none: 0, vanilla: 100, chocolate: 120, strawberry: 120, coffee: 130, honey: 150, rose: 140 },
   crown_prices: { none: 0, sprinkles: 150, pearls: 250, macarons: 450, flowers: 550 },

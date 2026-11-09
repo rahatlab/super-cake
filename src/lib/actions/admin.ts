@@ -647,6 +647,8 @@ export async function deleteBannerAction(id: string): Promise<ActionState> {
 export async function saveSettingsAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   await guard();
 
+  const prev = await getStore().getSettings().catch(() => null);
+
   const parsed = settingsSchema.safeParse({
     store_name: String(fd.get("store_name") ?? "").trim(),
     tagline: String(fd.get("tagline") ?? "").trim(),
@@ -660,6 +662,25 @@ export async function saveSettingsAction(_prev: ActionState, fd: FormData): Prom
     free_delivery_enabled: fd.get("free_delivery_enabled") === "on",
     cod_enabled: fd.get("cod_enabled") === "on",
     bkash_enabled: fd.get("bkash_enabled") === "on",
+    notification_sound_enabled: fd.get("notification_sound_enabled") === "on",
+    notification_sound_volume: Math.min(100, Math.max(0, Math.floor(Number(fd.get("notification_sound_volume") ?? 50) || 0))),
+    notification_sounds: {
+      order: {
+        enabled: fd.get("sound_order_enabled") === "on",
+        volume: Math.min(100, Math.max(0, Math.floor(Number(fd.get("sound_order_volume") ?? 50) || 0))),
+        url: String(fd.get("sound_order_url") ?? "").trim() || ((prev?.notification_sounds?.order?.url as string) ?? null) || null,
+      },
+      payment: {
+        enabled: fd.get("sound_payment_enabled") === "on",
+        volume: Math.min(100, Math.max(0, Math.floor(Number(fd.get("sound_payment_volume") ?? 50) || 0))),
+        url: String(fd.get("sound_payment_url") ?? "").trim() || ((prev?.notification_sounds?.payment?.url as string) ?? null) || null,
+      },
+      review: {
+        enabled: fd.get("sound_review_enabled") === "on",
+        volume: Math.min(100, Math.max(0, Math.floor(Number(fd.get("sound_review_volume") ?? 50) || 0))),
+        url: String(fd.get("sound_review_url") ?? "").trim() || ((prev?.notification_sounds?.review?.url as string) ?? null) || null,
+      },
+    },
     instagram: String(fd.get("instagram") ?? "") || undefined,
     facebook: String(fd.get("facebook") ?? "") || undefined,
     extra_tier_fee: Math.max(0, Math.floor(Number(fd.get("extra_tier_fee") ?? 300) || 300)),

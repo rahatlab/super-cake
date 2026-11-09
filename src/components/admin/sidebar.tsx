@@ -21,6 +21,7 @@ import {
 import type { ComponentType } from "react";
 import { cn } from "@/lib/utils";
 import { useAdminBadges, type AdminBadges } from "@/components/admin/realtime-badges";
+import type { Settings } from "@/lib/types";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
 import { Wallet01Icon, StarIcon, BellRingIcon } from "@animateicons/react/huge";
 
@@ -157,14 +158,19 @@ function SidebarBody({
  * Admin navigation. Static sidebar on lg+ screens, framer-motion slide-in
  * drawer (with hamburger trigger) on smaller screens.
  */
-export function AdminSidebar({ unread }: { unread: number }) {
+export function AdminSidebar({ unread, soundEnabled = true, soundVolume = 50, sounds = {} }: { unread: number; soundEnabled?: boolean; soundVolume?: number; sounds?: Settings["notification_sounds"] }) {
   const [open, setOpen] = useState(false);
-  const badges = useAdminBadges({
-    unread,
-    pendingReviews: 0,
-    pendingPayments: 0,
-    pendingOrders: 0,
-  });
+  const badges = useAdminBadges(
+    {
+      unread,
+      pendingReviews: 0,
+      pendingPayments: 0,
+      pendingOrders: 0,
+    },
+    soundEnabled,
+    soundVolume,
+    sounds,
+  );
 
   // Lock background scrolling while the mobile drawer is open.
   useEffect(() => {

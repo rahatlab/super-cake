@@ -260,6 +260,9 @@ export const settingsSchema = z.object({
   free_delivery_enabled: z.boolean(),
   cod_enabled: z.boolean(),
   bkash_enabled: z.boolean(),
+  notification_sound_enabled: z.boolean(),
+  notification_sound_volume: z.number().int().min(0).max(100),
+  notification_sounds: z.record(z.string(), z.object({ enabled: z.boolean(), volume: z.number().int().min(0).max(100), url: z.string().max(500).nullable().optional() })).optional(),
   instagram: z.string().max(200).optional(),
   facebook: z.string().max(200).optional(),
   // Custom cake pricing

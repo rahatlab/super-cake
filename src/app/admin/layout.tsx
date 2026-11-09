@@ -18,10 +18,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const notifications = await getStore().listNotifications();
   const unread = notifications.filter((n) => !n.is_read).length;
+  const settings = await getStore().getSettings();
 
   return (
     <div className="min-h-screen bg-bg">
-      <AdminSidebar unread={unread} />
+      <AdminSidebar unread={unread} soundEnabled={settings.notification_sound_enabled} soundVolume={settings.notification_sound_volume ?? 50} sounds={settings.notification_sounds ?? {}} />
 
       <div className="lg:pl-64">
         {/* top bar */}

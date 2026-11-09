@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import {
   Banknote,
   Loader2,
@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { Settings } from "@/lib/types";
 import { saveSettingsAction, type ActionState } from "@/lib/actions/admin";
+import { playNotificationSound, setNotificationVolume } from "@/lib/notification-sound";
 import { AnimIcon } from "@/components/ui/anim-icon";
 
 const initial: ActionState = {};
@@ -259,6 +260,38 @@ export function SettingsForm({ settings }: { settings: Settings }) {
               <span className="text-sm font-semibold">bKash পেমেন্ট চালু</span>
             </label>
 
+            <div className="space-y-2 rounded-xl border border-line bg-bg px-3.5 py-3">
+              <div className="flex items-center gap-2.5">
+                <label className="flex flex-1 cursor-pointer items-center gap-2.5">
+                  <input
+                    type="checkbox"
+                    name="notification_sound_enabled"
+                    defaultChecked={settings.notification_sound_enabled}
+                    className="h-4 w-4 accent-[hsl(var(--brand))]"
+                  />
+                  <span className="text-sm font-semibold">ড্যাশবোর্ডে নতুন অর্ডার/পেমেন্ট/রিভিউ এলে সাউন্ড</span>
+                </label>
+                <VolumeSlider initial={settings.notification_sound_volume ?? 50} />
+              </div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                {(
+                  [
+                    ["order", "নতুন অর্ডার"],
+                    ["payment", "পেমেন্ট"],
+                    ["review", "রিভিউ"],
+                  ] as const
+                ).map(([kind, label]) => (
+                  <SoundRow
+                    key={kind}
+                    kind={kind}
+                    label={label}
+                    initial={settings.notification_sounds?.[kind]}
+                  />
+                ))}
+              </div>
+              <p className="text-[11px] text-muted">Custom sound: WAV/MP3 (≤1MB) আপলোড করুন — না দিলে default sound বাজবে।</p>
+            </div>
+
             <p className="rounded-xl bg-accent/10 px-3 py-2 text-[11px] text-muted">
               <Percent className="mr-1 inline h-3 w-3" aria-hidden /> ছাড়ের হার Promo পেজ থেকে নিয়ন্ত্রণ করুন।
               এখানে শুধু চার্জ ও মেথড।
@@ -381,6 +414,96 @@ export function SettingsForm({ settings }: { settings: Settings }) {
         </div>
       </div>
     </form>
+  );
+}
+
+function SoundRow({
+  kind,
+  label,
+  initial,
+}: {
+  kind: "order" | "payment" | "review";
+  label: string;
+  initial?: { enabled: boolean; volume: number; url?: string | null };
+}) {
+  const [volume, setVolume] = useState(initial?.volume ?? 50);
+  const [url, setUrl] = useState(initial?.url ?? "");
+  const [uploading, setUploading] = useState(false);
+
+  async function upload(file: File) {
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch("/api/sound-upload", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrl, kind }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
+      if (json.url) setUrl(json.url);
+      else alert(json.error ?? "আপলোড ব্যর্থ");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-line bg-bg p-3">
+      <div className="flex items-center gap-2">
+        <label className="flex flex-1 cursor-pointer items-center gap-2">
+          <input type="checkbox" name={`sound_${kind}_enabled`} defaultChecked={initial?.enabled ?? true} className="h-4 w-4 accent-[hsl(var(--brand))]" />
+          <span className="text-xs font-bold">{label}</span>
+        </label>
+        <button type="button" onClick={() => playNotificationSound(kind)} className="btn btn-ghost btn-sm">Test</button>
+      </div>
+      <input
+        type="range"
+        name={`sound_${kind}_volume`}
+        min={0}
+        max={100}
+        value={volume}
+        onChange={(e) => setVolume(Number(e.target.value))}
+        className="mt-2 w-full accent-[hsl(var(--brand))]"
+        aria-label={`${label} ভলিউম`}
+      />
+      <p className="text-[11px] text-muted">{volume}%</p>
+      <div className="mt-2 flex items-center gap-1.5">
+        <input type="hidden" name={`sound_${kind}_url`} value={url} />
+        <label className="btn btn-ghost btn-sm cursor-pointer">
+          {uploading ? "…" : url ? "বদলান" : "Sound upload"}
+          <input type="file" accept="audio/*" className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+        </label>
+        {url && <span className="truncate text-[10px] text-success">custom sound ✓</span>}
+      </div>
+    </div>
+  );
+}
+
+function VolumeSlider({ initial }: { initial: number }) {
+  const [value, setValue] = useState(initial);
+  return (
+    <div className="flex shrink-0 items-center gap-2">
+      <input
+        type="range"
+        name="notification_sound_volume"
+        min={0}
+        max={100}
+        value={value}
+        onChange={(e) => {
+          const v = Number(e.target.value);
+          setValue(v);
+          setNotificationVolume(v / 100);
+        }}
+        className="w-20 accent-[hsl(var(--brand))]"
+        aria-label="নোটিফিকেশন সাউন্ড ভলিউম"
+      />
+      <span className="w-8 text-xs font-bold tabular-nums">{value}%</span>
+      <button type="button" onClick={() => playNotificationSound("test")} className="btn btn-ghost btn-sm shrink-0">Test</button>
+    </div>
   );
 }
 
