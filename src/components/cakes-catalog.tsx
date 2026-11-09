@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import type { Cake } from "@/lib/types";
 import { CakeCard } from "@/components/cake-card";
-import { CatalogFilters, type CatalogState } from "@/components/catalog-filters";
+import { CatalogFilters, OCCASION_ICON_NAME, type CatalogState } from "@/components/catalog-filters";
 import { AnimIcon } from "@/components/ui/anim-icon";
 
 interface Rating {
@@ -17,7 +17,6 @@ interface Opt {
   value: string;
   label: string;
   bn?: string;
-  emoji?: string;
 }
 
 /**
@@ -97,7 +96,7 @@ export function CakesCatalog({
         <h1 className="text-3xl font-extrabold sm:text-4xl">
           {activeOccasion ? (
             <>
-              <span aria-hidden>{activeOccasion.emoji}</span> {activeOccasion.label} Cakes
+              <AnimIcon name={OCCASION_ICON_NAME[activeOccasion.value] ?? "star"} className="h-8 w-8 shrink-0" /> {activeOccasion.label} Cakes
               <span className="ml-2 text-lg font-semibold text-muted">· {activeOccasion.bn}</span>
             </>
           ) : (

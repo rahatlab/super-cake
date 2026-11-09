@@ -7,8 +7,9 @@ import { getStore } from "@/lib/store";
 import { CACHE_TAGS, type CacheTag } from "@/lib/store/cache";
 import { requireAdmin } from "@/lib/auth";
 import { cakeSchema, postSchema, promoSchema, settingsSchema } from "@/lib/validators";
-import { MAX_CAKE_IMAGES } from "@/lib/constants";
-import { notifyOrderStatus, notifyReviewRequest } from "@/lib/whatsapp";
+import { MAX_CAKE_IMAGES, SITE } from "@/lib/constants";
+import { createInvoiceAccessToken } from "@/lib/auth";
+import { notifyInvoiceLink, notifyOrderStatus, notifyReviewRequest } from "@/lib/whatsapp";
 import { syncCakesToCatalog, type CatalogSyncResult } from "@/lib/whatsapp/catalog";
 import { storeImages } from "@/lib/upload";
 import type { OrderStatus } from "@/lib/types";
@@ -174,6 +175,83 @@ export async function deleteCakeAction(id: string): Promise<ActionState> {
   }
 }
 
+/* ----------------------------- catalog lists ----------------------------- */
+
+/** Save (create/update) a category or flavour from /admin/catalog. */
+async function saveListItem(
+  kind: "category" | "flavour",
+  id: string,
+  name: string,
+): Promise<ActionState> {
+  await guard();
+  const clean = name.trim();
+  if (clean.length < 1 || clean.length > 60) return { error: "নাম ১–৬০ অক্ষরের মধ্যে দিন" };
+  const store = getStore();
+  try {
+    const list = kind === "category" ? await store.listCategories() : await store.listFlavours();
+    const dupe = list.find((x) => x.name.trim().toLowerCase() === clean.toLowerCase() && x.id !== id);
+    if (dupe) return { error: `"${clean}" আগে থেকেই আছে` };
+
+    if (id) {
+      const old = list.find((x) => x.id === id);
+      if (!old) return { error: "পাওয়া যায়নি" };
+      // Renaming a category/flavour also renames it on every cake that uses it
+      // (cakes store plain strings, not a foreign key).
+      if (old.name !== clean) {
+        const cakes = await store.listCakes({ includeInactive: true });
+        for (const cake of cakes) {
+          if (kind === "category" && cake.category === old.name) await store.updateCake(cake.id, { category: clean });
+          if (kind === "flavour" && cake.flavor === old.name) await store.updateCake(cake.id, { flavor: clean });
+        }
+      }
+      if (kind === "category") await store.updateCategory(id, { name: clean });
+      else await store.updateFlavour(id, { name: clean });
+    } else if (kind === "category") {
+      await store.createCategory(clean);
+    } else {
+      await store.createFlavour(clean);
+    }
+    revalidatePublic(CACHE_TAGS.cakes, CACHE_TAGS.catalogLists);
+    revalidatePath("/admin/catalog");
+    return { success: `"${clean}" সেভ হয়েছে` };
+  } catch (e) {
+    return { error: friendlyStoreError(e, kind === "category" ? "ক্যাটাগরি" : "ফ্লেভার") };
+  }
+}
+
+async function deleteListItem(kind: "category" | "flavour", id: string): Promise<ActionState> {
+  await guard();
+  const store = getStore();
+  try {
+    const list = kind === "category" ? await store.listCategories() : await store.listFlavours();
+    const item = list.find((x) => x.id === id);
+    if (!item) return { error: "পাওয়া যায়নি" };
+    const cakes = await store.listCakes({ includeInactive: true });
+    const used = cakes.filter((c) => (kind === "category" ? c.category : c.flavor) === item.name).length;
+    if (used > 0) return { error: `${used} টি কেক এই ${kind === "category" ? "ক্যাটাগরি" : "ফ্লেভার"} ব্যবহার করছে — আগে কেকগুলো বদলান` };
+    if (kind === "category") await store.deleteCategory(id);
+    else await store.deleteFlavour(id);
+    revalidatePublic(CACHE_TAGS.cakes, CACHE_TAGS.catalogLists);
+    revalidatePath("/admin/catalog");
+    return { success: `"${item.name}" মুছে ফেলা হয়েছে` };
+  } catch (e) {
+    return { error: (e as Error).message };
+  }
+}
+
+export async function saveCategoryAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  return saveListItem("category", String(fd.get("id") ?? "").trim(), String(fd.get("name") ?? ""));
+}
+export async function deleteCategoryAction(id: string): Promise<ActionState> {
+  return deleteListItem("category", id);
+}
+export async function saveFlavourAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  return saveListItem("flavour", String(fd.get("id") ?? "").trim(), String(fd.get("name") ?? ""));
+}
+export async function deleteFlavourAction(id: string): Promise<ActionState> {
+  return deleteListItem("flavour", id);
+}
+
 export async function uploadImagesAction(fd: FormData): Promise<{
   urls: string[];
   error?: string;
@@ -225,9 +303,15 @@ export async function updateOrderStatusAction(
   try {
     await store.updateOrder(orderId, { order_status: status });
 
-    // Auto-mark payment as paid when order is completed (COD orders)
-    if (status === "completed" && order.payment_method === "cod" && order.payment_status !== "paid") {
-      await store.updateOrder(orderId, { payment_status: "paid" });
+    if (status === "completed" && order.payment_method === "cod") {
+      if (order.payment_status !== "paid") {
+        await store.updateOrder(orderId, { payment_status: "paid" });
+      }
+      // Ledger row so COD collections appear in /admin/payments (idempotent).
+      const existing = await store.listPayments({ orderId });
+      if (!existing.some((p) => p.method === "cod")) {
+        await store.createPayment({ order_id: orderId, method: "cod", amount: order.total, status: "paid" }).catch(() => undefined);
+      }
     }
 
     if (status === "cancelled") {
@@ -284,6 +368,23 @@ export async function updateOrderStatusAction(
             if (result.ok) {
               await store.updateOrder(orderId, {
                 review_requested_at: new Date().toISOString(),
+              });
+            }
+          }
+
+          // সম্পন্ন (completed) hole invoice link — ekbar, stamp diye.
+          if (status === "completed" && !fresh.invoice_sent_at) {
+            const invoiceUrl = `${SITE.url}/invoice/${encodeURIComponent(fresh.order_no)}?token=${createInvoiceAccessToken(fresh.id)}`;
+            const result = await notifyInvoiceLink({
+              phone: fresh.phone,
+              customerName: fresh.customer_name,
+              orderNo: fresh.order_no,
+              orderId: fresh.id,
+              invoiceUrl,
+            });
+            if (result.ok) {
+              await store.updateOrder(orderId, {
+                invoice_sent_at: new Date().toISOString(),
               });
             }
           }

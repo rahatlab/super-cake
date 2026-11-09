@@ -6,7 +6,7 @@ import { BUTTON_COMMANDS, MENU_BUTTONS, type WsButton } from "@/lib/whatsapp-men
 import { markPhoneOptedOut, markPhoneSubscribed } from "./log";
 import { markCartOptIn } from "./cart";
 import { clearOrderDraft, loadOrderDraft, saveOrderDraft, type OrderDraft } from "./draft";
-import { parseOrderDetails } from "./order-details";
+import { parseCustomerName, parseOrderDetails } from "./order-details";
 import {
   CANCEL_CONFIRM_ID,
   encodeConfirmId,
@@ -314,49 +314,76 @@ async function getDraftCake(draft: OrderDraft): Promise<Cake | null> {
   return cake && cake.is_active ? cake : null;
 }
 
-/**
- * "Details still missing" prompt. Never carries a confirm button — the
- * customer only sees that once address, phone and date are all collected.
- */
+/* ---------------- stepwise prompts ---------------- */
+
+function draftHeader(cake: Cake, draft: OrderDraft, settings: Settings): string[] {
+  const { weight, deliveryCharge, total } = draftTotals(cake, draft, settings);
+  return [
+    "*অর্ডার চালিয়ে যান*",
+    "",
+    `*কেক:* ${cake.name} ×${draft.quantity}`,
+    weight != null ? `*সাইজ:* ${weight} lb` : null,
+    `*মোট:* ${formatBDT(total)}${chargeNote(deliveryCharge)}`,
+  ].filter((l): l is string => l != null);
+}
+
+/** One question at a time: name → phone → address → date → slot → review. */
+export function nextStepReply(input: {
+  draft: OrderDraft;
+  cake: Cake;
+  settings: Settings;
+  from?: string;
+  hint?: string;
+}): AutoReply {
+  const { draft, cake, settings, from, hint } = input;
+  const head = draftHeader(cake, draft, settings);
+  const done = [
+    draft.name ? `✓ *নাম:* ${draft.name}` : null,
+    draft.phone ? `✓ *ফোন:* ${draft.phone}` : null,
+    draft.address ? `✓ *ঠিকানা:* ${draft.address}` : null,
+    draft.deliveryDate ? `✓ *তারিখ:* ${draft.deliveryDate}` : null,
+  ].filter((l): l is string => l != null);
+
+  const wrap = (question: string, buttons?: WsButton[]): AutoReply => {
+    const body = [...head, "", ...done, ...(hint ? [hint, ""] : []), question].join("\n");
+    return { text: body, fallbackText: body, buttons };
+  };
+
+  if (!draft.name) {
+    return wrap("১. আপনার *নাম* লিখুন — যেমন: রানা");
+  }
+  if (!draft.phone) {
+    const wa = from ? `আপনার WhatsApp নম্বর ${from} — এই নম্বরে ডেলিভারি হবে?` : "ডেলিভারি ফোন নম্বর দিন";
+    return wrap(`২. ${wa}\nঅন্য নম্বর হলে শুধু নম্বরটি লিখুন।`, from ? [{ id: "ph:ok", title: "হ্যাঁ, এই নম্বর" }] : undefined);
+  }
+  if (!draft.address) {
+    return wrap("৩. *ডেলিভারি ঠিকানা* লিখুন — যেমন: House 12, Road 3, Dhanmondi");
+  }
+  if (!draft.deliveryDate) {
+    return wrap("৪. *তারিখ* বেছে নিন, অথবা তারিখ লিখুন (যেমন: 15 Nov)", [
+      { id: `dw:${dhakaDatePlus(0)}`, title: "আজ" },
+      { id: `dw:${dhakaDatePlus(1)}`, title: "আগামীকাল" },
+      { id: `dw:${dhakaDatePlus(2)}`, title: "পরশু" },
+    ]);
+  }
+  if (!draft.slot && !draft.slotAsked) {
+    return wrap("৫. *সময়* বেছে নিন (অথবা রাত / যেকোনো সময় লিখুন)", [
+      { id: "slot:morning", title: "সকাল" },
+      { id: "slot:afternoon", title: "দুপুর" },
+      { id: "slot:evening", title: "বিকাল" },
+    ]);
+  }
+  return reviewReply({ draft, cake, settings });
+}
+
+/** Back-compat wrapper — older callers ask "details missing". */
 export function missingDetailsReply(input: {
   draft: OrderDraft;
   cake: Cake;
   settings: Settings;
   hint?: string;
 }): AutoReply {
-  const { draft, cake, settings, hint } = input;
-  const { weight, deliveryCharge, total } = draftTotals(cake, draft, settings);
-
-  const lines = [
-    "*অর্ডার চালিয়ে যান*",
-    "",
-    `*কেক:* ${cake.name} ×${draft.quantity}`,
-    weight != null ? `*সাইজ:* ${weight} lb` : null,
-    `*মোট:* ${formatBDT(total)}${chargeNote(deliveryCharge)}`,
-    "",
-    draft.address
-      ? `✓ *ঠিকানা:* ${draft.address}`
-      : "✗ *ঠিকানা:* এখনো দেওয়া হয়নি",
-    draft.phone
-      ? `✓ *ফোন:* ${draft.phone}`
-      : "✗ *ফোন নম্বর:* এখনো দেওয়া হয়নি",
-    draft.deliveryDate
-      ? `✓ *তারিখ:* ${draft.deliveryDate}${
-          draft.slot ? ` · ${SLOT_LABEL[draft.slot] ?? draft.slot}` : ""
-        }`
-      : "✗ *তারিখ:* এখনো দেওয়া হয়নি",
-    ...(hint ? ["", hint] : []),
-    "",
-    "*এক মেসেজে জানান — ঠিকানা, ফোন ও তারিখ,*",
-    "যেমন: House 12, Road 3, Dhanmondi — 01712345678 — 7 Nov 2026 বিকাল",
-  ].filter((l): l is string => l != null);
-
-  const body = lines.join("\n");
-  return {
-    text: body,
-    fallbackText: body,
-    buttons: [{ id: CANCEL_CONFIRM_ID, title: "বাতিল করুন" }],
-  };
+  return nextStepReply(input);
 }
 
 /**
@@ -370,7 +397,7 @@ export function reviewReply(input: {
   settings: Settings;
 }): AutoReply {
   const { draft, cake, settings } = input;
-  if (!draft.address || !draft.phone || !draft.deliveryDate) {
+  if (!draft.name || !draft.address || !draft.phone || !draft.deliveryDate) {
     return missingDetailsReply({ draft, cake, settings, hint: "সব তথ্য দিলেই অর্ডার কনফার্ম হবে।" });
   }
 
@@ -379,6 +406,7 @@ export function reviewReply(input: {
   const lines = [
     "*অর্ডার যাচাই করুন*",
     "",
+    draft.name ? `*নাম:* ${draft.name}` : null,
     `*কেক:* ${cake.name} ×${draft.quantity}`,
     weight != null ? `*সাইজ:* ${weight} lb` : null,
     `*অনুষ্ঠান:* ${OCCASION_BN[draft.occasion] ?? draft.occasion}`,
@@ -458,32 +486,42 @@ async function continueOrderDraft(input: {
   // chain answer it and keep the draft open for later.
   if (isDraftExitCommand(lower)) return null;
 
-  const parsed = parseOrderDetails(raw);
-  const nothingParsed =
-    !parsed.address && !parsed.phone && !parsed.deliveryDate && !parsed.slot;
-
-  const today = dhakaDatePlus(0);
   const merged: OrderDraft = { ...draft, updatedAt: new Date().toISOString() };
+  const today = dhakaDatePlus(0);
   let hint: string | undefined;
 
-  if (!nothingParsed) {
-    if (parsed.address) merged.address = parsed.address;
+  // Stepwise: answer only the current question. parseOrderDetails can still
+  // pick up bonus fields (phone/date inside an address message, etc.).
+  const parsed = parseOrderDetails(raw);
+
+  if (!draft.name) {
+    const name = parseCustomerName(raw);
+    if (!name) {
+      const cake = await getDraftCake(merged);
+      if (!cake) { await clearOrderDraft(from); return { text: `দুঃখিত, এই কেকটি আর পাওয়া যায়নি। অন্য কেক দেখুন: ${SITE.url}/cakes` }; }
+      return nextStepReply({ draft: merged, cake, settings, from, hint: "নামটি লিখুন — যেমন: রানা" });
+    }
+    merged.name = name;
+  } else {
     if (parsed.phone) merged.phone = parsed.phone;
+    if (parsed.address && !draft.address) merged.address = parsed.address;
     if (parsed.slot) merged.slot = parsed.slot;
     if (parsed.deliveryDate) {
-      if (parsed.deliveryDate < today) {
-        hint = `তারিখটি অতীতে পড়ছে (${parsed.deliveryDate})। আজ বা পরের তারিখ দিন।`;
-      } else {
-        merged.deliveryDate = parsed.deliveryDate;
-      }
+      if (parsed.deliveryDate < today) hint = `তারিখটি অতীতে পড়ছে (${parsed.deliveryDate})। আজ বা পরের তারিখ দিন।`;
+      else merged.deliveryDate = parsed.deliveryDate;
     }
-    if (merged.deliveryDate && merged.deliveryDate < today) {
-      // The date expired while we were waiting — never confirm a past date.
-      merged.deliveryDate = undefined;
-      hint = "অর্ডারের তারিখটি এখন অতীতে গেছে। নতুন তারিখ দিন।";
+    // Slot step: any reply counts as "asked", even without a slot word.
+    if (draft.deliveryDate && draft.address && draft.phone && !draft.slot && !draft.slotAsked) {
+      merged.slotAsked = true;
     }
-    await saveOrderDraft(from, merged);
   }
+
+  if (merged.deliveryDate && merged.deliveryDate < today) {
+    merged.deliveryDate = undefined;
+    hint = "অর্ডারের তারিখটি এখন অতীতে গেছে। নতুন তারিখ দিন।";
+  }
+
+  await saveOrderDraft(from, merged);
 
   const cake = await getDraftCake(merged);
   if (!cake) {
@@ -493,19 +531,26 @@ async function continueOrderDraft(input: {
     };
   }
 
-  if (nothingParsed) {
-    return missingDetailsReply({
-      draft: merged,
-      cake,
-      settings,
-      hint: "ঠিকানা, ফোন নম্বর ও তারিখ সহ একটি মেসেজ পাঠান।",
-    });
+  // Catalog-linked draft: the order already exists — keep it up to date and
+  // confirm in plain text instead of opening a second order.
+  if (merged.catalogOrderId) {
+    const store = getStore();
+    await store.updateOrder(merged.catalogOrderId, {
+      customer_name: merged.name ?? "WhatsApp ক্রেতা",
+      phone: merged.phone ?? from,
+      address: merged.address ?? "ঠিকানা নিতে হবে — WhatsApp-এ জানান",
+      delivery_date: merged.deliveryDate ?? dhakaDatePlus(2),
+      delivery_slot: merged.slot,
+    }).catch(() => undefined);
+    if (merged.name && merged.address && merged.phone && merged.deliveryDate) {
+      const orderNo = (await store.getOrderById(merged.catalogOrderId).catch(() => null))?.order_no ?? "";
+      await clearOrderDraft(from);
+      return { text: `*অর্ডার আপডেট হয়েছে*\n\n*নাম:* ${merged.name}\n*ঠিকানা:* ${merged.address}\n*ফোন:* ${merged.phone}\n*ডেলিভারি:* ${merged.deliveryDate}${merged.slot ? ` · ${SLOT_LABEL[merged.slot] ?? merged.slot}` : ""}\n*অর্ডার:* ${orderNo}\n\nআমরা অর্ডারটি কনফার্ম করে দিচ্ছি।` };
+    }
+    return nextStepReply({ draft: merged, cake, settings, from, hint });
   }
 
-  if (merged.address && merged.phone && merged.deliveryDate) {
-    return reviewReply({ draft: merged, cake, settings });
-  }
-  return missingDetailsReply({ draft: merged, cake, settings, hint });
+  return nextStepReply({ draft: merged, cake, settings, from, hint });
 }
 
 /* ---------------- free-text order request ---------------- */
@@ -569,40 +614,8 @@ async function buildOrderRequestReply(
   };
   await saveOrderDraft(from, draft);
 
-  const { deliveryCharge, total } = draftTotals(cake, draft, settings);
-
-  const lines = [
-    "*অর্ডার শুরু হয়েছে*",
-    "",
-    `*কেক:* ${cake.name}`,
-    `*পরিমাণ:* ${quantity}টি`,
-    size?.weight != null ? `*সাইজ:* ${size.weight} lb` : null,
-    `*অনুষ্ঠান:* ${OCCASION_BN[req.occasion] ?? req.occasion}`,
-    `*মোট:* ${formatBDT(total)}${chargeNote(deliveryCharge)}`,
-    "*পেমেন্ট:* ক্যাশ অন ডেলিভারি",
-    "",
-    req.deliveryDate
-      ? `*তারিখ দেওয়া আছে:* ${req.deliveryDate}${
-          req.slot ? ` · ${SLOT_LABEL[req.slot] ?? req.slot}` : ""
-        }`
-      : null,
-    "*অর্ডার কনফার্ম করতে জানান:*",
-    req.deliveryDate
-      ? "১. ডেলিভারি ঠিকানা\n২. ফোন নম্বর"
-      : "১. ডেলিভারি ঠিকানা\n২. ফোন নম্বর\n৩. তারিখ ও সময়",
-    "",
-    "*এক মেসেজে উদাহরণ:*",
-    "House 12, Road 3, Dhanmondi — 01712345678 — 7 Nov 2026 বিকাল",
-    "",
-    "তথ্য পাওয়া গেলে অর্ডার যাচাইয়ের বাটন পাবেন।",
-  ].filter((l): l is string => l != null);
-
-  const body = lines.join("\n");
-  return {
-    text: body,
-    fallbackText: body,
-    buttons: [{ id: CANCEL_CONFIRM_ID, title: "বাতিল করুন" }],
-  };
+  // Stepwise: the first question is always the customer's name.
+  return nextStepReply({ draft, cake, settings, from });
 }
 
 /**
@@ -745,7 +758,7 @@ export async function buildAutoReply({ text, from }: AutoReplyInput): Promise<Au
           "• order Chocolate Truffle 2 birthday",
           "• অর্ডার চকলেট ট্রাফল ২টি জন্মদিন",
           "",
-          "এরপর ঠিকানা, ফোন নম্বর ও তারিখ জানালে অর্ডার কনফার্ম করতে পারবেন।",
+          "এরপর একটা একটা করে নাম, ফোন, ঠিকানা, তারিখ ও সময় জানালে অর্ডার কনফার্ম করতে পারবেন।",
         ].join("\n"),
         fallbackText: menuFallback(settings.store_name),
         buttons: MENU_BUTTONS,

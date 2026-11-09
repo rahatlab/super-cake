@@ -6,7 +6,7 @@ import { Facebook, Instagram } from "@animateicons/react/huge";
 import { AnimatePresence, motion } from "framer-motion";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
-export function BlogShare({ title }: { title: string }) {
+export function BlogShare({ title, url }: { title: string; url?: string }) {
   const [copied, setCopied] = useState(false);
   const shareIcon = useAnimIcon();
 
@@ -69,7 +69,7 @@ export function BlogShare({ title }: { title: string }) {
     {/* Social share links */}
     <div className="mt-2 grid grid-cols-2 gap-2">
       <a
-        href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`}
+        href={url ? `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}` : "#"}
         target="_blank"
         rel="noopener noreferrer"
         className="btn btn-soft btn-block"

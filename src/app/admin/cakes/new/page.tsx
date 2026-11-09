@@ -2,10 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { CakeForm } from "@/components/admin/cake-form";
+import { getStore } from "@/lib/store";
 
 export const metadata: Metadata = { title: "New Cake" };
 
-export default function NewCakePage() {
+export default async function NewCakePage() {
+  const store = getStore();
+  const [cats, flvs] = await Promise.all([store.listCategories(true), store.listFlavours(true)]);
   return (
     <div className="space-y-5">
       <div>
@@ -21,7 +24,7 @@ export default function NewCakePage() {
         </p>
       </div>
 
-      <CakeForm />
+      <CakeForm categories={cats.map((c) => c.name)} flavours={flvs.map((f) => f.name)} />
     </div>
   );
 }

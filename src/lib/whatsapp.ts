@@ -396,6 +396,29 @@ export async function notifyReviewRequest(input: {
   return result;
 }
 
+/** Send the invoice link when an order completes (সম্পন্ন). */
+export async function notifyInvoiceLink(input: {
+  phone: string;
+  customerName: string;
+  orderNo: string;
+  orderId: string;
+  invoiceUrl: string;
+}): Promise<WsResult> {
+  const fallback = `${SITE.name}: ধন্যবাদ ${input.customerName}! আপনার অর্ডার ${input.orderNo} সম্পন্ন হয়েছে। Invoice দেখুন / ডাউনলোড করুন: ${input.invoiceUrl}`;
+  // Reuse the status-update template shape (3 params); invoice URL rides as the link param.
+  const result = await sendWithFallback(
+    input.phone,
+    WHATSAPP_TEMPLATES.orderStatusUpdate,
+    [input.orderNo, "সম্পন্ন", input.invoiceUrl],
+    fallback,
+  );
+  await logResult("invoice_link", input.phone, result, {
+    orderId: input.orderId,
+    templateName: WHATSAPP.templatesEnabled ? WHATSAPP_TEMPLATES.orderStatusUpdate : undefined,
+  });
+  return result;
+}
+
 /** Remind a customer about an abandoned cart (marketing — opt-in only). */
 export async function notifyAbandonedCart(input: {
   phone: string;

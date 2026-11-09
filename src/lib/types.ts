@@ -126,6 +126,8 @@ export interface Order {
   idempotency_key?: string | null;
   /** Set when the admin/customer WhatsApp confirmation has been sent. */
   confirmation_sent_at?: string | null;
+  /** Set when the invoice link was sent on WhatsApp (on completed). */
+  invoice_sent_at?: string | null;
   /** 🚩 admin marks suspected fake/prank orders. */
   is_flagged?: boolean;
   created_at: string;
@@ -233,6 +235,17 @@ export interface BlogPost {
   published_at?: string | null;
   created_at: string;
 }
+
+/** Admin-managed cake category / flavour list entry. */
+export interface CatalogListItem {
+  id: string;
+  name: string;
+  sort_order: number;
+  is_active: boolean;
+  created_at: string;
+}
+export type CakeCategory = CatalogListItem;
+export type CakeFlavour = CatalogListItem;
 
 export interface Banner {
   id: string;

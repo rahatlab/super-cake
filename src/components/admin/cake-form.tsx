@@ -14,6 +14,7 @@ import type { Cake, Occasion } from "@/lib/types";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
 import { AnimIcon } from "@/components/ui/anim-icon";
 import { OccasionIcon } from "@/components/occasion/occasion-chip";
+import { OrderLoadingOverlay } from "@/components/order/order-loading-overlay";
 
 interface SizeRow {
   weight: number;
@@ -21,7 +22,10 @@ interface SizeRow {
   is_available: boolean;
 }
 
-export function CakeForm({ cake }: { cake?: Cake }) {
+export function CakeForm({ cake, categories, flavours }: { cake?: Cake; categories?: string[]; flavours?: string[] }) {
+  const categoryOptions = categories ?? CATEGORIES;
+  const flavourOptions = flavours ?? FLAVORS;
+  if (cake?.category && !categoryOptions.includes(cake.category)) categoryOptions.push(cake.category);
   const router = useRouter();
   const [state, formAction, pending] = useActionState(saveCakeAction, {} as ActionState);
 
@@ -192,6 +196,10 @@ export function CakeForm({ cake }: { cake?: Cake }) {
           <AnimIcon name="alert" className="h-4 w-4 shrink-0" /> {uploadError}
         </p>
       )}
+      <OrderLoadingOverlay
+        show={busy}
+        message={uploading ? "ছবি আপলোড হচ্ছে…" : "কেক সেভ হচ্ছে…"}
+      />
 
       <form onSubmit={onSubmit} className="grid gap-6 lg:grid-cols-2">
         {/* ---------------- basic info ---------------- */}
@@ -231,7 +239,7 @@ export function CakeForm({ cake }: { cake?: Cake }) {
               </label>
               <input id="cake-flavor" name="flavor" required list="flavor-options" defaultValue={cake?.flavor ?? ""} className="field" placeholder="Chocolate Truffle" />
               <datalist id="flavor-options">
-                {FLAVORS.map((f) => (
+                {flavourOptions.map((f) => (
                   <option key={f} value={f} />
                 ))}
               </datalist>
@@ -240,8 +248,8 @@ export function CakeForm({ cake }: { cake?: Cake }) {
               <label htmlFor="cake-category" className="label">
                 Category *
               </label>
-              <select id="cake-category" name="category" required defaultValue={cake?.category ?? CATEGORIES[0]} className="field">
-                {CATEGORIES.map((c) => (
+              <select id="cake-category" name="category" required defaultValue={cake?.category ?? categoryOptions[0]} className="field">
+                {categoryOptions.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>

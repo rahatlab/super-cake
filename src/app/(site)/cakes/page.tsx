@@ -5,7 +5,8 @@ import {
   getCachedSettings,
   listCachedCakes,
 } from "@/lib/store/cache";
-import { CATEGORIES, OCCASIONS } from "@/lib/constants";
+import { OCCASIONS } from "@/lib/constants";
+import { listCachedCategories } from "@/lib/store/cache";
 import { CakesCatalog } from "@/components/cakes-catalog";
 import { breadcrumbLd, ldJson } from "@/lib/seo";
 
@@ -38,10 +39,11 @@ export default async function CakesPage({
   // Everything after that is filtered client-side (see CakesCatalog), and the
   // catalog data itself comes from the tagged data cache — no DB hit per visit.
   const sp = await searchParams;
-  const [cakes, ratings, settings] = await Promise.all([
+  const [cakes, ratings, settings, categories] = await Promise.all([
     listCachedCakes(),
     getCachedCakeRatings(),
     getCachedSettings(),
+    listCachedCategories(),
   ]);
 
   const initial = {
@@ -79,7 +81,7 @@ export default async function CakesPage({
         key={JSON.stringify(initial)}
         cakes={cakes}
         ratings={ratings}
-        categories={CATEGORIES}
+        categories={categories.map((c) => c.name)}
         occasions={OCCASIONS}
         initial={initial}
       />

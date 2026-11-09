@@ -56,7 +56,7 @@ function base64UrlDecode(value: string): string | null {
   }
 }
 
-export type TokenPurpose = "session" | "order_access" | "review_access" | "cart_lead";
+export type TokenPurpose = "session" | "order_access" | "review_access" | "cart_lead" | "invoice_access";
 
 interface TokenPayload {
   v: 1;
@@ -145,6 +145,14 @@ export function verifyReviewAccessToken(token: string | undefined | null): strin
 
 export function createCartLeadToken(phone: string): string {
   return createSignedToken("cart_lead", phone, 24 * 3600_000);
+}
+
+export function createInvoiceAccessToken(orderId: string): string {
+  return createSignedToken("invoice_access", orderId, 30 * 86400_000);
+}
+
+export function verifyInvoiceAccessToken(token: string | undefined | null): string | null {
+  return verifySignedToken(token, "invoice_access")?.subject ?? null;
 }
 
 export function verifyCartLeadToken(token: string | undefined | null): string | null {

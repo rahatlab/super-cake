@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseOrderDetails } from "../src/lib/whatsapp/order-details.ts";
+import { parseCustomerName, parseOrderDetails } from "../src/lib/whatsapp/order-details.ts";
 
 /** Dhaka today as YYYY-MM-DD (mirrors `dhakaDateString`). */
 const today = new Date(Date.now() + 6 * 3600_000).toISOString().slice(0, 10);
@@ -110,4 +110,24 @@ test("a leading address label is stripped", () => {
 test("menu-ish or empty junk yields no details at all", () => {
   assert.deepEqual(parseOrderDetails("ok"), {});
   assert.deepEqual(parseOrderDetails("??"), {});
+});
+
+test("parseCustomerName accepts Bengali/English names and strips prefixes", () => {
+  assert.equal(parseCustomerName("রানা"), "রানা");
+  assert.equal(parseCustomerName("আমার নাম: রানা"), "রানা");
+  assert.equal(parseCustomerName("Name: Ariful Islam"), "Ariful Islam");
+  assert.equal(parseCustomerName("  Md. Rahat  "), "Md. Rahat");
+});
+
+test("parseCustomerName rejects phones, cancel words and junk", () => {
+  assert.equal(parseCustomerName("01712345678"), undefined);
+  assert.equal(parseCustomerName("cancel"), undefined);
+  assert.equal(parseCustomerName("x"), undefined);
+  assert.equal(parseCustomerName("??"), undefined);
+});
+
+test("relative date words আজ/আগামীকাল/পরশু resolve in Dhaka time", () => {
+  assert.equal(parseOrderDetails("আজ").deliveryDate, today);
+  assert.equal(parseOrderDetails("আগামীকাল").deliveryDate, new Date(Date.now() + 6 * 3600_000 + 86400_000).toISOString().slice(0, 10));
+  assert.equal(parseOrderDetails("পরশু").deliveryDate, new Date(Date.now() + 6 * 3600_000 + 2 * 86400_000).toISOString().slice(0, 10));
 });

@@ -15,6 +15,7 @@ import {
   MessageCircle,
   Percent,
   Settings as SettingsIcon,
+  Tags,
   X,
 } from "lucide-react";
 import type { ComponentType } from "react";
@@ -33,6 +34,7 @@ const LINKS: {
   { href: "/admin", label: "Overview", bn: "সারসংক্ষেপ", icon: LayoutDashboard },
   { href: "/admin/orders", label: "Orders", bn: "অর্ডার", icon: ClipboardList, badge: "pendingOrders" },
   { href: "/admin/cakes", label: "Cakes", bn: "কেক", icon: CakeSlice },
+  { href: "/admin/catalog", label: "Catalog", bn: "ক্যাটাগরি/ফ্লেভার", icon: Tags },
   { href: "/admin/payments", label: "Payments", bn: "পেমেন্ট", icon: Wallet01Icon, badge: "pendingPayments" },
   { href: "/admin/promos", label: "Promos", bn: "প্রোমো", icon: Percent },
   { href: "/admin/reviews", label: "Reviews", bn: "রিভিউ", icon: StarIcon, badge: "pendingReviews" },

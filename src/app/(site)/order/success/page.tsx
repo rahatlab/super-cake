@@ -167,7 +167,10 @@ export default async function OrderSuccessPage({
 
         {/* actions */}
         <div className="grid gap-3 sm:grid-cols-3">
-          <Link href={`/track?no=${encodeURIComponent(order.order_no)}`} className="btn btn-primary">
+          <Link href={`/invoice/${encodeURIComponent(order.order_no)}?token=${encodeURIComponent(token ?? "")}`} className="btn btn-primary">
+            Invoice ডাউনলোড
+          </Link>
+          <Link href={`/track?no=${encodeURIComponent(order.order_no)}`} className="btn btn-soft">
             <Search className="h-4 w-4" /> ট্র্যাক করুন
           </Link>
           <a href={wa} target="_blank" rel="noopener noreferrer" className="btn btn-soft">

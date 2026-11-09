@@ -57,6 +57,7 @@ export default async function AdminOrderDetailPage({
           <p className="mt-1 text-xs text-muted">তৈরি হয়েছে {formatDateTime(order.created_at)}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link href={`/invoice/${encodeURIComponent(order.order_no)}`} className="btn btn-soft btn-sm">Invoice</Link>
           <FlagToggle orderId={order.id} flagged={order.is_flagged ?? false} />
           <span className={`badge text-sm ${meta.color}`}>
             {meta.label} · {meta.bn}

@@ -134,6 +134,11 @@ function resolveCommand(message: MetaMessage): string | null {
     const parts = id.split(":");
     if (parts.length === 3) return `order ${parts[1]} 1 ${parts[2]}lb`;
   }
+  // Stepwise order buttons — map back to the words the draft parser understands.
+  if (id.startsWith("dw:") && /^\d{4}-\d{2}-\d{2}$/.test(id.slice(3))) return id.slice(3);
+  const SLOT_WORD: Record<string, string> = { "slot:morning": "সকাল", "slot:afternoon": "দুপুর", "slot:evening": "বিকাল" };
+  if (SLOT_WORD[id]) return SLOT_WORD[id];
+  if (id === "ph:ok") return message.from ?? "";
   return BUTTON_COMMANDS[id] ?? null;
 }
 

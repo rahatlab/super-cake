@@ -4,6 +4,8 @@ import type {
   Banner,
   BlogPost,
   Cake,
+  CakeCategory,
+  CakeFlavour,
   DashboardStats,
   Notification,
   Order,
@@ -18,7 +20,7 @@ import type {
   EmailVerification,
 } from "@/lib/types";
 import { uid, slugBase, pickUniqueSlug, generateOrderNo, phoneKey } from "@/lib/utils";
-import { PAYMENT_METHOD_LABEL } from "@/lib/constants";
+import { PAYMENT_METHOD_LABEL, CATEGORIES, FLAVORS } from "@/lib/constants";
 import type {
   CreateOrderInput,
   StockLine,
@@ -63,6 +65,18 @@ interface DB {
   posts: BlogPost[];
   banners: Banner[];
   notifications: Notification[];
+  categories: CakeCategory[];
+  flavours: CakeFlavour[];
+}
+
+function seedList(names: string[], prefix: string) {
+  return names.map((name, i) => ({
+    id: `${prefix}_${i + 1}`,
+    name,
+    sort_order: i + 1,
+    is_active: true,
+    created_at: new Date(0).toISOString(),
+  }));
 }
 
 const DATA_DIR = path.join(process.cwd(), ".data");
@@ -104,6 +118,8 @@ function freshDB(): DB {
     posts: buildSeedPosts(),
     banners: buildSeedBanners(),
     notifications: buildSeedNotifications(),
+    categories: seedList(CATEGORIES, "cat"),
+    flavours: seedList(FLAVORS, "flv"),
   };
 }
 
@@ -983,6 +999,56 @@ export const localStore: Store = {
     await tx((db) => {
       db.posts = db.posts.filter((p) => p.id !== id);
     });
+  },
+
+  /* catalog lists */
+  async listCategories(activeOnly) {
+    const db = await load();
+    return [...db.categories]
+      .filter((c) => !activeOnly || c.is_active)
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+  },
+  async createCategory(name) {
+    return tx((db) => {
+      const row: CakeCategory = { id: uid("cat"), name: name.trim(), sort_order: db.categories.length + 1, is_active: true, created_at: new Date().toISOString() };
+      db.categories.push(row);
+      return row;
+    });
+  },
+  async updateCategory(id, patch) {
+    return tx((db) => {
+      const i = db.categories.findIndex((c) => c.id === id);
+      if (i < 0) throw new Error("Category not found");
+      db.categories[i] = { ...db.categories[i], ...patch };
+      return db.categories[i];
+    });
+  },
+  async deleteCategory(id) {
+    await tx((db) => { db.categories = db.categories.filter((c) => c.id !== id); });
+  },
+  async listFlavours(activeOnly) {
+    const db = await load();
+    return [...db.flavours]
+      .filter((f) => !activeOnly || f.is_active)
+      .sort((a, b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name));
+  },
+  async createFlavour(name) {
+    return tx((db) => {
+      const row: CakeFlavour = { id: uid("flv"), name: name.trim(), sort_order: db.flavours.length + 1, is_active: true, created_at: new Date().toISOString() };
+      db.flavours.push(row);
+      return row;
+    });
+  },
+  async updateFlavour(id, patch) {
+    return tx((db) => {
+      const i = db.flavours.findIndex((f) => f.id === id);
+      if (i < 0) throw new Error("Flavour not found");
+      db.flavours[i] = { ...db.flavours[i], ...patch };
+      return db.flavours[i];
+    });
+  },
+  async deleteFlavour(id) {
+    await tx((db) => { db.flavours = db.flavours.filter((f) => f.id !== id); });
   },
 
   /* banners */

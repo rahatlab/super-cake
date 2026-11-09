@@ -9,6 +9,7 @@ import {
   sendWhatsApp,
 } from "@/lib/whatsapp";
 import { logWhatsAppMessage } from "./log";
+import { saveOrderDraft } from "./draft";
 import { catalogPrice, normalizeUnitPrice } from "./catalog-core";
 
 export { catalogPrice, normalizeUnitPrice };
@@ -279,6 +280,19 @@ export async function createCatalogOrder(
     metaMessageId,
   });
 
+  // Open a stepwise draft linked to this order — the customer's next replies
+  // (name, phone, address, date) update the order instead of asking the admin.
+  if (firstCake) {
+    await saveOrderDraft(from, {
+      cakeId: firstCake.id,
+      quantity: orderItems.reduce((s, i) => s + i.quantity, 0),
+      occasion,
+      deliveryDate: dhakaDatePlus(MIN_DELIVERY_LEAD_DAYS),
+      catalogOrderId: order.id,
+      updatedAt: new Date().toISOString(),
+    }).catch(() => undefined);
+  }
+
   // The customer opened the 24h window — ask for what the catalog cannot ask.
   const reply = [
     `*${settings.store_name} — অর্ডার গৃহীত হয়েছে*`,
@@ -288,8 +302,11 @@ export async function createCatalogOrder(
     `*অর্ডার:* ${order.order_no}`,
     `*মোট:* ৳${order.total.toLocaleString("en-US")}`,
     "",
-    "ডেলিভারির ঠিকানা এবং পছন্দের তারিখ/সময় এখানেই জানান,",
-    "আমরা অর্ডারটি কনফার্ম করে দিচ্ছি।",
+    "অর্ডারটি কনফার্ম করতে একটা একটা করে জানান:",
+    "১. আপনার নাম",
+    "২. ফোন নম্বর",
+    "৩. ডেলিভারি ঠিকানা",
+    "৪. তারিখ ও সময়",
   ].join("\n");
   const sent = await sendWhatsApp(from, reply);
 

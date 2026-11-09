@@ -17,9 +17,10 @@ interface Ctx {
 
 export const revalidate = 300;
 
-/** Prerender published posts; admin edits revalidate the whole site anyway. */
+/** Prerender every post slug so newly published posts never 404. The page
+ *  itself still returns notFound() for unpublished posts. */
 export async function generateStaticParams() {
-  const posts = await listCachedPosts(true);
+  const posts = await listCachedPosts();
   return posts.map((p) => ({ slug: p.slug }));
 }
 
@@ -93,7 +94,7 @@ export default async function BlogPostPage({ params }: Ctx) {
           <span className="inline-flex items-center gap-1.5">
             <ReadingTime text={post.content} />
           </span>
-          <BlogShare title={post.title} />
+          <BlogShare title={post.title} url={`${SITE.url}/blog/${post.slug}`} />
         </div>
 
         {post.excerpt && (

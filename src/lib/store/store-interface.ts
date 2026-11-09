@@ -2,6 +2,8 @@ import type {
   Banner,
   BlogPost,
   Cake,
+  CakeCategory,
+  CakeFlavour,
   DashboardStats,
   Notification,
   Order,
@@ -217,6 +219,16 @@ export interface Store {
   createPost(data: Omit<BlogPost, "id" | "created_at" | "slug"> & { slug?: string }): Promise<BlogPost>;
   updatePost(id: string, patch: Partial<BlogPost>): Promise<BlogPost>;
   deletePost(id: string): Promise<void>;
+
+  /* catalog lists (categories / flavours, admin CRUD) */
+  listCategories(activeOnly?: boolean): Promise<CakeCategory[]>;
+  createCategory(name: string): Promise<CakeCategory>;
+  updateCategory(id: string, patch: Partial<CakeCategory>): Promise<CakeCategory>;
+  deleteCategory(id: string): Promise<void>;
+  listFlavours(activeOnly?: boolean): Promise<CakeFlavour[]>;
+  createFlavour(name: string): Promise<CakeFlavour>;
+  updateFlavour(id: string, patch: Partial<CakeFlavour>): Promise<CakeFlavour>;
+  deleteFlavour(id: string): Promise<void>;
 
   /* banners */
   listBanners(opts?: { activeOnly?: boolean }): Promise<Banner[]>;

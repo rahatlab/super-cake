@@ -205,6 +205,12 @@ export function TrackPanel({
             <CustomDesignPreview order={viewOrder} />
 
             <div className="grid gap-3 sm:grid-cols-2">
+              <Link
+                href={`/invoice/${encodeURIComponent(viewOrder.order_no)}?phone=${encodeURIComponent(lookupPhone)}`}
+                className="btn btn-primary btn-block"
+              >
+                Invoice দেখুন / ডাউনলোড
+              </Link>
               <a
                 href={waLink(
                   whatsappPhone,

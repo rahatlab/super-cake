@@ -24,6 +24,12 @@ export interface OrderDraft {
   slot?: OrderSlot;
   address?: string;
   phone?: string;
+  /** Customer's own name — collected first in the stepwise flow. */
+  name?: string;
+  /** Slot step was already asked (customer may skip a time preference). */
+  slotAsked?: boolean;
+  /** Catalog order already created — draft updates that order instead of creating a new one. */
+  catalogOrderId?: string;
   updatedAt: string;
 }
 

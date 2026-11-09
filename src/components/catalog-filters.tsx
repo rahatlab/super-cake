@@ -2,14 +2,23 @@
 
 import { Search, SlidersHorizontal } from "@animateicons/react/huge";
 import { Cancel01 } from "@animateicons/react/huge";
+import { AnimIcon } from "@/components/ui/anim-icon";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
 
 interface Opt {
   value: string;
   label: string;
   bn?: string;
-  emoji?: string;
 }
+
+/** Occasion value -> AnimIcon name (replaces the old emoji). */
+export const OCCASION_ICON_NAME: Record<string, string> = {
+  birthday: "cake",
+  anniversary: "heart",
+  occasion: "sparkles",
+  gift: "gift",
+  others: "star",
+};
 
 export interface CatalogState {
   q: string;
@@ -92,7 +101,7 @@ export function CatalogFilters({
             onClick={() => set({ occasion: value.occasion === o.value ? "" : o.value })}
             className="chip shrink-0"
           >
-            {o.emoji} {o.label}
+            <AnimIcon name={OCCASION_ICON_NAME[o.value] ?? "star"} className="h-4 w-4 shrink-0" /> {o.label}
           </button>
         ))}
       </div>

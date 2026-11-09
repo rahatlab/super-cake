@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState, useActionState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Cancel01, ImageAdd01, Loading01, Save } from "@animateicons/react/huge";
 import { savePostAction, uploadImagesAction, type ActionState } from "@/lib/actions/admin";
 import type { BlogPost } from "@/lib/types";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
 import { AnimIcon } from "@/components/ui/anim-icon";
+import { OrderLoadingOverlay } from "@/components/order/order-loading-overlay";
 
 const initial: ActionState = {};
 
@@ -16,6 +18,7 @@ export function PostForm({ post }: { post?: BlogPost }) {
   const [cover, setCover] = useState(post?.cover_image ?? "");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
+  const busy = pending || uploading;
   // AnimateIcons refs for post form icons
   const saveIcon = useAnimIcon();
   const removeCoverIcon = useAnimIcon();
@@ -66,6 +69,10 @@ export function PostForm({ post }: { post?: BlogPost }) {
             <AnimIcon name="check" className="h-4 w-4 shrink-0" /> {state.success}
           </p>
         )}
+        <OrderLoadingOverlay
+          show={busy}
+          message={uploading ? "ছবি আপলোড হচ্ছে…" : "ব্লগ সেভ হচ্ছে…"}
+        />
 
         <section className="card space-y-4 p-5">
           <div>
@@ -188,6 +195,12 @@ export function PostForm({ post }: { post?: BlogPost }) {
 
           {cover ? (
             <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-line bg-brand/10">
+              <Image
+                src={cover}
+                alt={post?.title ?? "কভার ছবি"}
+                fill
+                className="object-cover"
+              />
               <button
                 type="button"
                 onClick={() => setCover("")}

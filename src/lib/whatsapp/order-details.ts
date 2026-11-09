@@ -287,6 +287,46 @@ function buildAddress(text: string): string | undefined {
   return s.length >= 3 ? s : undefined;
 }
 
+/* ---------------- name ---------------- */
+
+const NAME_PREFIX_RE =
+  /^(?:আমার নাম|নাম|আমি|name|ami)\s*[:\-–—]?\s*/i;
+
+/**
+ * The customer's own name from a stepwise reply. One whole message is
+ * expected here, so anything that looks like a phone number, a date or an
+ * address is rejected — the stepwise prompt asks for those separately.
+ */
+export function parseCustomerName(input: string): string | undefined {
+  let s = input.replace(/\s+/g, " ").trim().replace(NAME_PREFIX_RE, "").trim();
+  s = s.replace(/^[()\[\]{}.,;:!?|/\\\-–—\s]+/, "").replace(/[()\[\]{}.,;:!?|/\\\-–—\s]+$/, "").trim();
+  if (s.length < 2 || s.length > 50) return undefined;
+  if (!/[\p{L}]/u.test(s)) return undefined;
+  const digits = s.replace(/\D/g, "");
+  if (digits.length >= 7) return undefined; // a phone number, not a name
+  if (/\d/.test(s) && digits.length >= 3) return undefined;
+  if (/^(cancel|stop|বাতিল|হ্যাঁ|হাঁ|হ|yes|ok|okay)$/i.test(s)) return undefined;
+  return s;
+}
+
+/* ---------------- relative date words ---------------- */
+
+/** Dhaka `YYYY-MM-DD` plus `offset` days (আজ/কাল/পরশু quick replies). */
+function dhakaDatePlus(offset: number): string {
+  const now = new Date(Date.now() + 6 * 3600_000 + offset * 86400_000);
+  return now.toISOString().slice(0, 10);
+}
+
+function extractRelativeDate(text: string): { date?: string; rest: string } {
+  const m = text.match(/আগামীকাল|পরশু|আজ|tomorrow|day\s+after|today/i);
+  if (!m) return { rest: text };
+  const w = m[0].toLowerCase();
+  const offset = /আগামীকাল|কাল|tomorrow/.test(w) || w === "কাল" ? 1 : /পরশু|day\s+after/.test(w) ? 2 : 0;
+  // পরশু must win over কাল (পরশু contains কাল? no — Bengali script differs, order above still safe)
+  const rest = text.replace(m[0], " ");
+  return { date: dhakaDatePlus(/পরশু/.test(w) ? 2 : offset), rest };
+}
+
 /* ---------------- entry point ---------------- */
 
 /**
@@ -301,6 +341,10 @@ export function parseOrderDetails(input: string): ParsedOrderDetails {
   const phone = extractPhone(working);
   if (phone.phone) out.phone = phone.phone;
   working = phone.rest;
+
+  const relative = extractRelativeDate(working);
+  if (relative.date) out.deliveryDate = relative.date;
+  working = relative.rest;
 
   const date = extractDate(working);
   if (date.date) out.deliveryDate = date.date;

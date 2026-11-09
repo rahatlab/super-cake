@@ -51,6 +51,7 @@ function acceptedReply(order: Order): string {
     "*অর্ডার গৃহীত হয়েছে*",
     "",
     `*অর্ডার নম্বর:* ${order.order_no}`,
+    `*নাম:* ${order.customer_name}`,
     item
       ? `*কেক:* ${item.name} ×${item.quantity}${item.weight ? ` (${item.weight} lb)` : ""}`
       : null,
@@ -146,12 +147,12 @@ export async function handleOrderConfirm(input: {
     });
   }
 
-  if (!draft.address || !draft.phone || !draft.deliveryDate) {
+  if (!draft.name || !draft.address || !draft.phone || !draft.deliveryDate) {
     return missingDetailsReply({
       draft,
       cake,
       settings,
-      hint: "ঠিকানা, ফোন নম্বর ও তারিখ দিলেই অর্ডার কনফার্ম হবে।",
+      hint: "নাম, ঠিকানা, ফোন নম্বর ও তারিখ দিলেই অর্ডার কনফার্ম হবে।",
     });
   }
 
@@ -205,7 +206,7 @@ export async function handleOrderConfirm(input: {
   let order: Order;
   try {
     order = await store.createOrder({
-      customer_name: "WhatsApp ক্রেতা",
+      customer_name: draft.name ?? "WhatsApp ক্রেতা",
       phone: draft.phone,
       occasion,
       items: orderItems,

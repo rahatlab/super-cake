@@ -13,8 +13,10 @@ export default async function EditCakePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const cake = await getStore().getCakeById(id);
+  const store = getStore();
+  const cake = await store.getCakeById(id);
   if (!cake) notFound();
+  const [cats, flvs] = await Promise.all([store.listCategories(true), store.listFlavours(true)]);
 
   return (
     <div className="space-y-5">
@@ -29,7 +31,7 @@ export default async function EditCakePage({
         <p className="mt-1 text-sm text-muted">তথ্য বদলে সেভ করুন — সাইটে সাথে সাথে আপডেট হবে</p>
       </div>
 
-      <CakeForm cake={cake} />
+      <CakeForm cake={cake} categories={cats.map((c) => c.name)} flavours={flvs.map((f) => f.name)} />
     </div>
   );
 }

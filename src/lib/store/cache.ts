@@ -21,6 +21,7 @@ export const CACHE_TAGS = {
   posts: "posts",
   reviews: "reviews",
   banners: "banners",
+  catalogLists: "catalog-lists",
 } as const;
 
 export type CacheTag = (typeof CACHE_TAGS)[keyof typeof CACHE_TAGS];
@@ -74,4 +75,17 @@ export const listCachedApprovedReviews = unstable_cache(
   async () => getStore().listReviews({ approvedOnly: true }),
   ["public-reviews"],
   { tags: [CACHE_TAGS.reviews], revalidate: FIVE_MINUTES },
+);
+
+/** Active categories/flavours for the public filter + cake form. */
+export const listCachedCategories = unstable_cache(
+  async () => getStore().listCategories(true),
+  ["public-categories"],
+  { tags: [CACHE_TAGS.catalogLists], revalidate: FIVE_MINUTES },
+);
+
+export const listCachedFlavours = unstable_cache(
+  async () => getStore().listFlavours(true),
+  ["public-flavours"],
+  { tags: [CACHE_TAGS.catalogLists], revalidate: FIVE_MINUTES },
 );

@@ -3,6 +3,8 @@ import type {
   Banner,
   BlogPost,
   Cake,
+  CakeCategory,
+  CakeFlavour,
   DashboardStats,
   Notification,
   Order,
@@ -991,6 +993,56 @@ export const supabaseStore: Store = {
   },
   async deletePost(id) {
     const { error } = await db().from("blog_posts").delete().eq("id", id);
+    if (error) err(error);
+  },
+
+  /* catalog lists — needs supabase/phase-catalog-lists.sql */
+  async listCategories(activeOnly) {
+    let q = db().from("cake_categories").select("*").order("sort_order").order("name");
+    if (activeOnly) q = q.eq("is_active", true);
+    const { data, error } = await q;
+    if (error) err(error);
+    return (data ?? []) as CakeCategory[];
+  },
+  async createCategory(name) {
+    const { data, error } = await db().from("cake_categories")
+      .insert({ name: name.trim(), sort_order: 999, is_active: true, created_at: new Date().toISOString() })
+      .select("*").single();
+    if (error) err(error);
+    return data as CakeCategory;
+  },
+  async updateCategory(id, patch) {
+    const { error } = await db().from("cake_categories").update(patch).eq("id", id);
+    if (error) err(error);
+    const { data } = await db().from("cake_categories").select("*").eq("id", id).maybeSingle();
+    return data as CakeCategory;
+  },
+  async deleteCategory(id) {
+    const { error } = await db().from("cake_categories").delete().eq("id", id);
+    if (error) err(error);
+  },
+  async listFlavours(activeOnly) {
+    let q = db().from("cake_flavours").select("*").order("sort_order").order("name");
+    if (activeOnly) q = q.eq("is_active", true);
+    const { data, error } = await q;
+    if (error) err(error);
+    return (data ?? []) as CakeFlavour[];
+  },
+  async createFlavour(name) {
+    const { data, error } = await db().from("cake_flavours")
+      .insert({ name: name.trim(), sort_order: 999, is_active: true, created_at: new Date().toISOString() })
+      .select("*").single();
+    if (error) err(error);
+    return data as CakeFlavour;
+  },
+  async updateFlavour(id, patch) {
+    const { error } = await db().from("cake_flavours").update(patch).eq("id", id);
+    if (error) err(error);
+    const { data } = await db().from("cake_flavours").select("*").eq("id", id).maybeSingle();
+    return data as CakeFlavour;
+  },
+  async deleteFlavour(id) {
+    const { error } = await db().from("cake_flavours").delete().eq("id", id);
     if (error) err(error);
   },
 
