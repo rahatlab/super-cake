@@ -169,7 +169,7 @@ export function getTierFeeValue(settings?: { extra_tier_fee?: number }): number 
 
 /** Tier count implied by an order weight — mirrors the 3D preview. */
 export function tiersForWeight(weight: number): number {
-  return weight <= 1 ? 1 : weight <= 2 ? 2 : 3;
+  return weight <= 1 ? 1 : weight <= 2 ? 2 : weight <= 3 ? 3 : 4;
 }
 
 export function crownById(id: string | null | undefined): Crown | undefined {
@@ -232,12 +232,18 @@ export interface CustomExtrasSpec {
 export function customExtras(
   spec: CustomExtrasSpec | null | undefined,
   weight: number | undefined,
-  settings?: { extra_tier_fee?: number; crown_prices?: Record<string, number>; syrup_prices?: Record<string, number> },
+  settings?: {
+    extra_tier_fee?: number;
+    crown_prices?: Record<string, number>;
+    syrup_prices?: Record<string, number>;
+    custom_options?: Partial<Record<string, boolean>>;
+  },
 ): number {
   if (!spec) return 0;
+  const opt = settings?.custom_options ?? {};
   return (
-    tierExtraFee(spec.tiers, weight, settings) +
-    getCrownPrice(spec.decoration ?? "none", settings) +
-    getSyrupPrice(spec.syrup ?? "none", settings)
+    (opt.tiers === false ? 0 : tierExtraFee(spec.tiers, weight, settings)) +
+    (opt.crown === false ? 0 : getCrownPrice(spec.decoration ?? "none", settings)) +
+    (opt.syrup === false ? 0 : getSyrupPrice(spec.syrup ?? "none", settings))
   );
 }

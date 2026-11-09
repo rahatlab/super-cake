@@ -96,6 +96,8 @@ export interface Order {
     message_on_cake?: string;
     servings?: number;
     reference_image?: string;
+    /** 3D design screenshot (uploaded PNG) from /custom-order */
+    design_image_url?: string;
     budget?: number;
     /** 3D design picker choices from /custom-order */
     cake_shape?: "round" | "square" | "heart" | "number";
@@ -289,7 +291,30 @@ export interface Settings {
   syrup_prices: Record<string, number>;
   /** Custom cake crown/topping prices, keyed by CrownId. */
   crown_prices: Record<string, number>;
+  /** Which custom-cake options the customer sees (all true by default). */
+  custom_options?: Partial<Record<CustomOptionKey, boolean>>;
 }
+
+export type CustomOptionKey =
+  | "tiers"
+  | "shape"
+  | "finish"
+  | "crown"
+  | "syrup"
+  | "message"
+  | "font"
+  | "message_color";
+
+export const DEFAULT_CUSTOM_OPTIONS: Record<CustomOptionKey, boolean> = {
+  tiers: true,
+  shape: true,
+  finish: true,
+  crown: true,
+  syrup: true,
+  message: true,
+  font: true,
+  message_color: true,
+};
 
 /* ---------- derived / report shapes ---------- */
 

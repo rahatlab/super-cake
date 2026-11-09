@@ -354,3 +354,13 @@
 .Toastify__toast {
   font-family: inherit;
 }
+
+/* ---------------- invoice print (fallback) ---------------- */
+/* PDF download is the primary path (/api/invoice/.../pdf); print keeps only
+   the invoice card — no site header/footer spill (full-page bug fix). */
+@page { size: A4; margin: 12mm; }
+@media print {
+  body * { visibility: hidden; }
+  #invoice, #invoice * { visibility: visible; }
+  #invoice { position: absolute; left: 0; top: 0; width: 100%; box-shadow: none !important; border: none !important; }
+}

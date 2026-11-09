@@ -126,6 +126,25 @@ export async function placeOrderAction(
   const store = getStore();
   const settings = await store.getSettings();
 
+  // Disabled custom options are stripped server-side (trust boundary) —
+  // a tampered hidden field cannot buy an option the shop turned off.
+  if (input.custom_spec && settings.custom_options) {
+    const off = settings.custom_options;
+    if (off.tiers === false) input.custom_spec.tiers = undefined;
+    if (off.shape === false) input.custom_spec.cake_shape = undefined;
+    if (off.finish === false) input.custom_spec.frosting_color = undefined;
+    if (off.crown === false) input.custom_spec.decoration = undefined;
+    if (off.syrup === false) input.custom_spec.syrup = undefined;
+    if (off.message === false) input.custom_spec.message_on_cake = undefined;
+    if (off.font === false) input.custom_spec.message_font = undefined;
+    if (off.message_color === false) input.custom_spec.message_color = undefined;
+  }
+  // 3D design screenshot uploaded by the form (separate hidden field).
+  const designImageUrl = String(formData.get("design_image_url") ?? "").trim();
+  if (designImageUrl && input.custom_spec) {
+    input.custom_spec.design_image_url = designImageUrl;
+  }
+
   // Check if user is blocked by phone number
   const userByPhone = await store.findUserByPhone(input.phone);
   if (userByPhone && userByPhone.is_blocked) {

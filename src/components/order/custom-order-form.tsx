@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useActionState } from "react";
+import { useMemo, useState, useActionState, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, Lock, Percent, Send, Upload } from "lucide-react";
 import type { Settings } from "@/lib/types";
@@ -76,6 +76,15 @@ export function CustomOrderForm({
 
   const sizes = useMemo(() => {
     const list = (cake.sizes ?? []).filter((s) => s.is_available);
+    // Custom cakes go up to 5 lb — synthesise 4/5 lb rows from base price
+    // when the cake has no stored size row for them.
+    const have = new Set(list.map((s) => s.weight));
+    for (const w of [4, 5]) {
+      if (!have.has(w)) {
+        list.push({ weight: w, price: Math.round((cake.base_price * (w === 4 ? 3.2 : 3.9)) / 50) * 50, is_available: true });
+      }
+    }
+    list.sort((a, b) => a.weight - b.weight);
     if (list.length) return list;
     return [{ weight: 1, price: cake.base_price, is_available: true }];
   }, [cake]);
@@ -106,6 +115,43 @@ export function CustomOrderForm({
   const [tiers, setTiers] = useState(1);
   const [syrup, setSyrup] = useState<SyrupId>("none");
   const [cut, setCut] = useState(0);
+  // 3D design screenshot: captured from the canvas on submit, uploaded, then
+  // stored on custom_spec.design_image_url.
+  const captureRef = useRef<(() => string | null) | null>(null);
+  const designImageUrlRef = useRef("");
+  const [designImageUrl, setDesignImageUrl] = useState("");
+  const [designUploading, setDesignUploading] = useState(false);
+  const submitLockRef = useRef(false);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (submitLockRef.current) return; // second pass — let the action run
+    e.preventDefault();
+    const form = e.currentTarget;
+    setDesignUploading(true);
+    try {
+      const dataUrl = captureRef.current?.();
+      if (dataUrl) {
+        const res = await fetch("/api/design-upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dataUrl }),
+        });
+        const json = (await res.json().catch(() => ({}))) as { url?: string };
+        if (json.url) {
+          designImageUrlRef.current = json.url;
+          setDesignImageUrl(json.url);
+          const hidden = form.querySelector<HTMLInputElement>('input[name="design_image_url"]');
+          if (hidden) hidden.value = json.url;
+        }
+      }
+    } catch {
+      // No design image — order still goes through with the text spec.
+    } finally {
+      setDesignUploading(false);
+      submitLockRef.current = true;
+      form.requestSubmit();
+    }
+  }
 
   const [promoInput, setPromoInput] = useState("");
   const [promo, setPromo] = useState<{
@@ -118,11 +164,20 @@ export function CustomOrderForm({
   const [promoLoading, setPromoLoading] = useState(false);
 
   const selected = sizes.find((s) => Math.abs(s.weight - weight) < 0.01) ?? sizes[0];
-  // Configurator add-ons on top of the size price. `placeOrderAction` re-runs
-  // the exact same function server-side, so the quote always matches the charge.
-  const tierFee = tierExtraFee(tiers, weight, settings);
-  const crownFee = getCrownPrice(decoration, settings);
-  const syrupFee = getSyrupPrice(syrup, settings);
+  const opt = settings.custom_options ?? {};
+  const showTiers = opt.tiers ?? true;
+  const showShape = opt.shape ?? true;
+  const showFinish = opt.finish ?? true;
+  const showCrown = opt.crown ?? true;
+  const showSyrup = opt.syrup ?? true;
+  const showMessage = opt.message ?? true;
+  const showFont = opt.font ?? true;
+  const showMessageColor = opt.message_color ?? true;
+
+  // Disabled options fall back to defaults and cost 0 (server re-checks too).
+  const tierFee = showTiers ? tierExtraFee(tiers, weight, settings) : 0;
+  const crownFee = showCrown ? getCrownPrice(decoration, settings) : 0;
+  const syrupFee = showSyrup ? getSyrupPrice(syrup, settings) : 0;
   const extras = tierFee + crownFee + syrupFee;
   const subtotal = selected.price + extras;
 
@@ -202,7 +257,7 @@ export function CustomOrderForm({
   };
 
   return (
-    <form action={formAction} className="grid gap-7 lg:grid-cols-[1.4fr_1fr]">
+    <form action={formAction} onSubmit={handleSubmit} className="grid gap-7 lg:grid-cols-[1.4fr_1fr]">
       <input type="hidden" name="occasion" value="others" />
       <input type="hidden" name="items" value={JSON.stringify([item])} />
       <input
@@ -212,6 +267,7 @@ export function CustomOrderForm({
           message_on_cake: message || undefined,
           design_notes: designNotes || undefined,
           reference_image: refUrl || undefined,
+          design_image_url: designImageUrl || undefined,
           budget: budget ?? undefined,
           cake_shape: cakeShape,
           frosting_color: frostingColor,
@@ -222,6 +278,7 @@ export function CustomOrderForm({
           syrup: syrup,
         })}
       />
+      <input type="hidden" name="design_image_url" defaultValue="" />
       <input type="hidden" name="promo_code" value={promo?.ok ? promoInput.trim().toUpperCase() : ""} />
       <input type="hidden" name="referral_code" value="" />
       <input type="hidden" name="payment_method" value={payment} />
@@ -269,10 +326,11 @@ export function CustomOrderForm({
           </div>
 
           {/* Tier selector — Image-1 style priced architectural height */}
+          {showTiers && (
           <div>
             <span className="label">টিয়ার সংখ্যা (Architectural Height)</span>
-            <div className="grid grid-cols-3 gap-2">
-              {[1, 2, 3].map((n) => {
+            <div className="grid grid-cols-4 gap-2">
+              {[1, 2, 3, 4].map((n) => {
                 const fee = tierExtraFee(n, weight, settings);
                 return (
                   <button
@@ -298,8 +356,10 @@ export function CustomOrderForm({
               ওজনের বেস টিয়ার ফ্রি — বেশি টিয়ারে প্রতিটির +{formatBDT(getTierFeeValue(settings))}
             </p>
           </div>
+          )}
 
           {/* Shape Selection */}
+          {showShape && (
           <div>
             <span className="label">Cake Shape (আকৃতি)</span>
             <div className="grid grid-cols-4 gap-2">
@@ -327,8 +387,10 @@ export function CustomOrderForm({
               ))}
             </div>
           </div>
+          )}
 
           {/* Finish swatches — named finishes with their own interior layers */}
+          {showFinish && (
           <div>
             <span className="label">ফিনিশ (Outer Finish)</span>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
@@ -384,8 +446,10 @@ export function CustomOrderForm({
               </label>
             </div>
           </div>
+          )}
 
           {/* Crown / topping selector — priced cards like the reference */}
+          {showCrown && (
           <div>
             <span className="label">ক্রাউন / টপিং (Top Crown)</span>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -413,8 +477,10 @@ export function CustomOrderForm({
               ))}
             </div>
           </div>
+          )}
 
           {/* Sponge syrup infusion */}
+          {showSyrup && (
           <div>
             <span className="label">সিরাপ ইনফিউশন (Sponge Infusion)</span>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
@@ -438,7 +504,9 @@ export function CustomOrderForm({
               ))}
             </div>
           </div>
+          )}
 
+          {showMessage && (
           <div>
             <label className="label" htmlFor="msg">কেকের উপরের লেখা</label>
             <input
@@ -452,6 +520,7 @@ export function CustomOrderForm({
             />
 
             {/* Font picker — each chip previews its own face */}
+            {showFont && (
             <div className="mt-4">
               <span className="label">লেখার ফন্ট</span>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -477,8 +546,10 @@ export function CustomOrderForm({
                 })}
               </div>
             </div>
+            )}
 
             {/* Text colour picker */}
+            {showMessageColor && (
             <div className="mt-4">
               <span className="label">লেখার রঙ</span>
               <div className="flex flex-wrap items-center gap-2">
@@ -517,7 +588,9 @@ export function CustomOrderForm({
                 </label>
               </div>
             </div>
+            )}
           </div>
+          )}
 
           <div>
             <label className="label" htmlFor="design_notes">ডিজাইন / theme বর্ণনা *</label>
@@ -710,7 +783,7 @@ export function CustomOrderForm({
           </div>
 
           <button type="submit" disabled={pending || (!settings.cod_enabled && !settings.bkash_enabled)} className="btn btn-primary btn-lg btn-block min-w-0 whitespace-normal text-center leading-snug">
-            {pending ? <><Loader2 className="h-4 w-4 animate-spin" /> অর্ডার পাঠানো হচ্ছে…</> : <><Send className="h-4 w-4 shrink-0" /> Custom Cake অর্ডার করুন</>}
+            {designUploading ? "ডিজাইন আপলোড হচ্ছে…" : pending ? <><Loader2 className="h-4 w-4 animate-spin" /> অর্ডার পাঠানো হচ্ছে…</> : <><Send className="h-4 w-4 shrink-0" /> Custom Cake অর্ডার করুন</>}
           </button>
         </section>
       </div>
@@ -727,6 +800,7 @@ export function CustomOrderForm({
       <aside className="lg:sticky lg:top-24 lg:self-start">
         <div className="card overflow-hidden !p-0">
           <Cake3DPreview
+            captureRef={captureRef}
             shape={cakeShape}
             color={frostingColor}
             tiers={tiers}

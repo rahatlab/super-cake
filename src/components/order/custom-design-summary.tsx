@@ -39,6 +39,7 @@ function Swatch({ color, label }: { color: string; label: string }) {
 export function hasCustomDesign(spec: Spec | null | undefined): boolean {
   if (!spec) return false;
   return Boolean(
+    spec.design_image_url ||
     spec.cake_shape ||
       spec.frosting_color ||
       spec.message_font ||
@@ -58,7 +59,14 @@ export function CustomDesignSummary({ spec }: { spec: Spec }) {
   if (!hasCustomDesign(spec)) return null;
 
   return (
-    <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+    <div className="mt-1 flex flex-wrap items-start gap-x-4 gap-y-1.5">
+    {spec.design_image_url && (
+      <a href={spec.design_image_url} target="_blank" rel="noopener noreferrer" className="shrink-0 overflow-hidden rounded-xl border border-line">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={spec.design_image_url} alt="3D ডিজাইন" className="h-20 w-20 object-cover" />
+      </a>
+    )}
+    <p className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
       {spec.cake_shape && (
         <span>
           <AnimIcon name="cake" className="h-4 w-4 shrink-0" /> <strong>আকৃতি:</strong> {SHAPE_LABELS[spec.cake_shape]}
@@ -89,5 +97,6 @@ export function CustomDesignSummary({ spec }: { spec: Spec }) {
         </span>
       )}
     </p>
+    </div>
   );
 }

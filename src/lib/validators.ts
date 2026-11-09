@@ -79,6 +79,7 @@ export const checkoutSchema = z
         message_on_cake: z.string().max(60).optional(),
         servings: z.number().int().min(1).max(200).optional(),
         reference_image: z.string().max(500).optional(),
+        design_image_url: z.string().max(500).optional(),
         budget: z.number().nonnegative().optional(),
         // 3D design picker from /custom-order — without these keys zod strips
         // them and the customer's design choices never reach the order.
@@ -265,6 +266,7 @@ export const settingsSchema = z.object({
   extra_tier_fee: z.number().int().min(0).default(300),
   syrup_prices: z.record(z.string(), z.number()).optional(),
   crown_prices: z.record(z.string(), z.number()).optional(),
+  custom_options: z.record(z.string(), z.boolean()).optional(),
 });
 
 export const trackSchema = z.object({

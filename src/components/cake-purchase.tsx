@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -80,7 +81,7 @@ export function CakePurchase({
         <div>
           <div className="mb-2 flex items-baseline justify-between">
             <span className="label !mb-0">ওজন বাছুন</span>
-            <span className="text-xs text-muted">½ lb – 3 lb</span>
+            <span className="text-xs text-muted">{cake.is_custom_available ? "½ lb – 5 lb (custom)" : "½ lb – 3 lb"}</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {available.map((s) => {
@@ -206,6 +207,12 @@ export function CakePurchase({
             )}
           </AnimatePresence>
         </motion.button>
+
+        {!soldOut && cake.is_custom_available && (
+          <Link href={`/custom-order?cake=${encodeURIComponent(cake.slug)}`} className="btn btn-primary btn-lg btn-block">
+            <AnimIcon name="paint" className="h-4 w-4 shrink-0" /> এই কেকটি কাস্টমাইজ করুন
+          </Link>
+        )}
 
         {!soldOut && (
           <button onClick={handleBuyNow} className="btn btn-ghost btn-lg btn-block" onMouseEnter={() => zapIcon.current?.startAnimation()} onMouseLeave={() => zapIcon.current?.stopAnimation()}>

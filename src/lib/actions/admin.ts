@@ -372,9 +372,9 @@ export async function updateOrderStatusAction(
             }
           }
 
-          // সম্পন্ন (completed) hole invoice link — ekbar, stamp diye.
+          // সম্পন্ন (completed) hole invoice PDF — ekbar, stamp diye.
           if (status === "completed" && !fresh.invoice_sent_at) {
-            const invoiceUrl = `${SITE.url}/invoice/${encodeURIComponent(fresh.order_no)}?token=${createInvoiceAccessToken(fresh.id)}`;
+            const invoiceUrl = `${SITE.url}/api/invoice/${encodeURIComponent(fresh.order_no)}/pdf?token=${createInvoiceAccessToken(fresh.id)}`;
             const result = await notifyInvoiceLink({
               phone: fresh.phone,
               customerName: fresh.customer_name,
@@ -678,6 +678,16 @@ export async function saveSettingsAction(_prev: ActionState, fd: FormData): Prom
       pearls: Math.max(0, Math.floor(Number(fd.get("crown_pearls") ?? 0) || 0)),
       macarons: Math.max(0, Math.floor(Number(fd.get("crown_macarons") ?? 0) || 0)),
       flowers: Math.max(0, Math.floor(Number(fd.get("crown_flowers") ?? 0) || 0)),
+    },
+    custom_options: {
+      tiers: fd.get("custom_opt_tiers") === "on",
+      shape: fd.get("custom_opt_shape") === "on",
+      finish: fd.get("custom_opt_finish") === "on",
+      crown: fd.get("custom_opt_crown") === "on",
+      syrup: fd.get("custom_opt_syrup") === "on",
+      message: fd.get("custom_opt_message") === "on",
+      font: fd.get("custom_opt_font") === "on",
+      message_color: fd.get("custom_opt_message_color") === "on",
     },
   });
   if (!parsed.success) return { error: parsed.error.issues[0].message };

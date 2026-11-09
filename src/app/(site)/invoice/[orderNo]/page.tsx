@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getStore } from "@/lib/store";
 import { getCachedSettings } from "@/lib/store/cache";
-import { getCurrentUser, verifyInvoiceAccessToken, verifyOrderAccessToken } from "@/lib/auth";
-import { formatBDT, formatDateTime, phoneDigits } from "@/lib/utils";
+import { getAccessibleOrder } from "@/lib/invoice-access";
+import { formatBDT, formatDateTime } from "@/lib/utils";
 import { ORDER_STATUS_META, PAYMENT_METHOD_LABEL } from "@/lib/constants";
-import { PrintButton } from "@/components/invoice/print-button";
 
 export const metadata: Metadata = { title: "Invoice", robots: { index: false } };
 
@@ -19,26 +17,18 @@ export default async function InvoicePage({
 }) {
   const { orderNo } = await params;
   const { token, phone } = await searchParams;
-  const store = getStore();
-  const order = await store.getOrderByNo(decodeURIComponent(orderNo));
-  if (!order) notFound();
-
-  const settings = await getCachedSettings();
-  const user = await getCurrentUser();
-  const ownsBySession = Boolean(user && (order.user_id === user.id || user.role === "admin"));
-  const tokenOk = verifyInvoiceAccessToken(token) === order.id || verifyOrderAccessToken(token) === order.id;
-  const phoneOk = Boolean(phone && phoneDigits(phone).length >= 10 && phoneDigits(phone).slice(-10) === phoneDigits(order.phone).slice(-10));
-  if (!ownsBySession && !tokenOk && !phoneOk) {
+  const accessible = await getAccessibleOrder({ orderNo, token, phone });
+  if (!accessible) {
     return (
       <div className="container-page py-16">
         <div className="card mx-auto max-w-lg p-8 text-center">
           <h1 className="text-2xl font-extrabold">Invoice দেখা যাবে না</h1>
           <p className="mt-2 text-sm text-muted">
-            অর্ডার নম্বর <strong className="font-mono text-fg">{order.order_no}</strong> — invoice দেখতে
+            অর্ডার নম্বর <strong className="font-mono text-fg">{orderNo}</strong> — invoice দেখতে
             WhatsApp-এ পাঠানো লিংক ব্যবহার করুন, অথবা অর্ডার নম্বর ও ফোন নম্বর দিয়ে ট্র্যাক করুন।
           </p>
           <div className="mt-5 flex flex-wrap justify-center gap-2">
-            <Link href={`/track?no=${encodeURIComponent(order.order_no)}`} className="btn btn-primary">ট্র্যাক করুন</Link>
+            <Link href={`/track?no=${encodeURIComponent(orderNo)}`} className="btn btn-primary">ট্র্যাক করুন</Link>
             <Link href="/" className="btn btn-ghost">হোম</Link>
           </div>
         </div>
@@ -46,6 +36,8 @@ export default async function InvoicePage({
     );
   }
 
+  const order = accessible;
+  const settings = await getCachedSettings();
   const meta = ORDER_STATUS_META[order.order_status];
 
   return (
@@ -53,7 +45,14 @@ export default async function InvoicePage({
       <div className="mx-auto max-w-3xl">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3 print:hidden">
           <Link href="/" className="text-sm font-semibold text-muted hover:text-fg">← {settings.store_name}</Link>
-          <PrintButton />
+          <div className="flex gap-2">
+            <a
+              href={`/api/invoice/${encodeURIComponent(order.order_no)}/pdf${token ? `?token=${encodeURIComponent(token)}` : phone ? `?phone=${encodeURIComponent(phone)}` : ""}`}
+              className="btn btn-primary"
+            >
+              Download PDF
+            </a>
+          </div>
         </div>
 
         <div className="card p-6 sm:p-8" id="invoice">

@@ -52,13 +52,17 @@ export const ORDER_STATUS_FLOW: OrderStatus[] = [
   "completed",
 ];
 
-export const WEIGHTS = [0.5, 1, 2, 3] as const;
+export const WEIGHTS = [0.5, 1, 2, 3, 4, 5] as const;
+/** Custom cake allows up to 5 lb (regular catalog cakes stay ½–3 lb). */
+export const CUSTOM_WEIGHTS = WEIGHTS;
 
 export const WEIGHT_LABEL: Record<number, string> = {
   0.5: "½ Pound",
   1: "1 Pound",
   2: "2 Pounds",
   3: "3 Pounds",
+  4: "4 Pounds",
+  5: "5 Pounds",
 };
 
 /** Minimum calendar days between order placement and delivery (Dhaka). */
@@ -109,6 +113,16 @@ export const DEFAULT_SETTINGS: Settings = {
   extra_tier_fee: 300,
   syrup_prices: { none: 0, vanilla: 100, chocolate: 120, strawberry: 120, coffee: 130, honey: 150, rose: 140 },
   crown_prices: { none: 0, sprinkles: 150, pearls: 250, macarons: 450, flowers: 550 },
+  custom_options: {
+    tiers: true,
+    shape: true,
+    finish: true,
+    crown: true,
+    syrup: true,
+    message: true,
+    font: true,
+    message_color: true,
+  },
 };
 
 /** WhatsApp Cloud API (Meta) — configured via env */

@@ -695,6 +695,7 @@ export function Cake3DPreview({
   textColor: inkColor,
   decoration = "none",
   cut = 0,
+  captureRef,
 }: {
   shape: Shape;
   color: string;
@@ -705,6 +706,8 @@ export function Cake3DPreview({
   decoration?: Decoration;
   /** Cross-section reveal, 0 (closed) → 1 (slice fully pulled out). */
   cut?: number;
+  /** Receives a capture function (PNG data URL) for order submission. */
+  captureRef?: React.MutableRefObject<(() => string | null) | null>;
 }) {
   const baseRadius = 14;
   const tierHeight = 7;
@@ -814,7 +817,22 @@ export function Cake3DPreview({
         <span className="truncate">ক্রাউন: {crownLabel(decoration)}</span>
       </div>
 
-      <Canvas shadows camera={{ position: cameraPosition, fov: 45 }} gl={{ antialias: true }}>
+      <Canvas
+        shadows
+        camera={{ position: cameraPosition, fov: 45 }}
+        gl={{ antialias: true, preserveDrawingBuffer: true }}
+        onCreated={({ gl }) => {
+          if (captureRef) {
+            captureRef.current = () => {
+              try {
+                return gl.domElement.toDataURL("image/png");
+              } catch {
+                return null;
+              }
+            };
+          }
+        }}
+      >
         {/*
           Env map rendered locally from light formers. A `preset` would pull an
           HDR from a third-party CDN, which our CSP `connect-src` blocks — the

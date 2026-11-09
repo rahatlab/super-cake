@@ -26,6 +26,8 @@ export function sizeRows(cakeId: string, base: number) {
     { id: `${cakeId}-s1`, cake_id: cakeId, weight: 1, price: base, is_available: true },
     { id: `${cakeId}-s2`, cake_id: cakeId, weight: 2, price: Math.round((base * 1.8) / 50) * 50, is_available: true },
     { id: `${cakeId}-s3`, cake_id: cakeId, weight: 3, price: Math.round((base * 2.5) / 50) * 50, is_available: base < 1800 },
+    { id: `${cakeId}-s4`, cake_id: cakeId, weight: 4, price: Math.round((base * 3.2) / 50) * 50, is_available: true },
+    { id: `${cakeId}-s5`, cake_id: cakeId, weight: 5, price: Math.round((base * 3.9) / 50) * 50, is_available: true },
   ];
 }
 

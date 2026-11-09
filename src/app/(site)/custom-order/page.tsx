@@ -20,12 +20,18 @@ export const metadata: Metadata = {
 // Fresh idempotency key + request-time delivery window on every visit.
 export const dynamic = "force-dynamic";
 
-export default async function CustomOrderPage() {
+export default async function CustomOrderPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ cake?: string }>;
+}) {
   const [settings, cakes] = await Promise.all([getCachedSettings(), listCachedCakes()]);
-  // Zero cakes in the catalog must NOT 404 — a custom order is orderable even
-  // in an empty shop (ensureCustomBaseCake provisions the base row on demand).
+  // Per-cake customize: ?cake=<slug> picks that cake when it is custom-enabled,
+  // otherwise the generic custom base cake (existing behaviour).
+  const requested = (await searchParams)?.cake;
+  const picked = requested ? cakes.find((c) => c.slug === requested && c.is_custom_available) : undefined;
   const customCake =
-    cakes.find((c) => c.is_custom_available) ?? cakes[0] ?? (await ensureCustomBaseCake());
+    picked ?? cakes.find((c) => c.is_custom_available) ?? cakes[0] ?? (await ensureCustomBaseCake());
 
   return (
     <div className="container-page py-8">

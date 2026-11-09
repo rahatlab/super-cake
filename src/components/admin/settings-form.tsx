@@ -274,7 +274,35 @@ export function SettingsForm({ settings }: { settings: Settings }) {
             hint="Custom cake অর্ডারের জন্য টিয়ার, সিরাপ ও ক্রাউন এর দাম"
           />
 
-          <div className="mt-4 grid gap-6 sm:grid-cols-3">
+          <div className="mt-4">
+            <span className="label">Custom order option — off করলে কাস্টমার সেই অপশন দেখবে না</span>
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {(
+                [
+                  ["tiers", "টিয়ার সংখ্যা"],
+                  ["shape", "Cake Shape"],
+                  ["finish", "ফিনিশ (রঙ)"],
+                  ["crown", "ক্রাউন / টপিং"],
+                  ["syrup", "সিরাপ ইনফিউশন"],
+                  ["message", "কেকের লেখা"],
+                  ["font", "লেখার ফন্ট"],
+                  ["message_color", "লেখার রঙ"],
+                ] as const
+              ).map(([key, label]) => (
+                <label key={key} className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-line bg-bg px-3.5 py-3">
+                  <input
+                    type="checkbox"
+                    name={`custom_opt_${key}`}
+                    defaultChecked={settings.custom_options?.[key] ?? true}
+                    className="h-4 w-4 accent-[hsl(var(--brand))]"
+                  />
+                  <span className="text-sm font-semibold">{label}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-6 grid gap-6 sm:grid-cols-3">
             {/* Extra Tier Fee */}
             <div>
               <label htmlFor="set-extra-tier-fee" className="label">
