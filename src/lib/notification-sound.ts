@@ -103,12 +103,14 @@ export function setNotificationVolume(v: number) {
   if (ctx && master) master.gain.setTargetAtTime(masterVolume, ctx.currentTime, 0.03);
 }
 
-/** Play the chime for a kind. No-op when disabled or audio is still locked. */
-export async function playNotificationSound(kind: NotificationSoundKind) {
+/** Play the chime for a kind. No-op when disabled or audio is still locked.
+ *  `urlOverride` lets the settings page test the just-uploaded file before
+ *  props refresh and repopulate the map. */
+export async function playNotificationSound(kind: NotificationSoundKind, urlOverride?: string) {
   const s = settings.get(kind);
   if (s && s.enabled === false && kind !== "test") return;
   const vol = s ? Math.min(1, Math.max(0, s.volume / 100)) : masterVolume;
-  const url = s?.url || DEFAULT_FILES[kind];
+  const url = urlOverride || s?.url || DEFAULT_FILES[kind];
   ensureContext();
   try {
     const audio = new Audio(url);

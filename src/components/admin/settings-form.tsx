@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import type { Settings } from "@/lib/types";
 import { saveSettingsAction, type ActionState } from "@/lib/actions/admin";
-import { playNotificationSound, setNotificationVolume } from "@/lib/notification-sound";
+import { playNotificationSound, setNotificationVolume, setSoundSettings } from "@/lib/notification-sound";
 import { AnimIcon } from "@/components/ui/anim-icon";
 
 const initial: ActionState = {};
@@ -444,8 +444,12 @@ function SoundRow({
         body: JSON.stringify({ dataUrl, kind }),
       });
       const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
-      if (json.url) setUrl(json.url);
-      else alert(json.error ?? "আপলোড ব্যর্থ");
+      if (json.url) {
+        setUrl(json.url);
+        // Push into the module map so Test + the next notification use the new
+        // file immediately, before a page refresh re-renders the sidebar props.
+        setSoundSettings(kind, { enabled: initial?.enabled ?? true, volume, url: json.url });
+      } else alert(json.error ?? "আপলোড ব্যর্থ");
     } finally {
       setUploading(false);
     }
@@ -458,7 +462,7 @@ function SoundRow({
           <input type="checkbox" name={`sound_${kind}_enabled`} defaultChecked={initial?.enabled ?? true} className="h-4 w-4 accent-[hsl(var(--brand))]" />
           <span className="text-xs font-bold">{label}</span>
         </label>
-        <button type="button" onClick={() => playNotificationSound(kind)} className="btn btn-ghost btn-sm">Test</button>
+        <button type="button" onClick={() => playNotificationSound(kind, url || undefined)} className="btn btn-ghost btn-sm">Test</button>
       </div>
       <input
         type="range"
