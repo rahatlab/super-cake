@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Cancel01, ChevronLeft, ChevronRight, Expand } from "@animateicons/react/huge";
 import { useAnimIcon } from "@/components/ui/use-anim-icon";
+import { SkeletonLoader } from "@/components/ui/skeleton-loader";
 
 export function CakeGallery({
   images,
@@ -52,7 +53,10 @@ export function CakeGallery({
 
   return (
     <div className="space-y-3">
-      <div className="card group relative aspect-square overflow-hidden !rounded-3xl bg-surface">
+      <div
+        onClick={() => setZoom(true)}
+        className="card group relative aspect-square overflow-hidden !rounded-3xl bg-surface"
+      >
         <AnimatePresence mode="wait">
           <motion.div
             key={index}
@@ -66,9 +70,9 @@ export function CakeGallery({
               src={list[index]}
               alt={`${name} — image ${index + 1}`}
               fill
-              priority
+              priority={index === 0}
               sizes="(max-width: 1024px) 100vw, 50vw"
-              className={`${fitClass} ${posClass} transition-transform duration-500 group-hover:scale-[1.15]`}
+              className={`${fitClass} ${posClass} transition-transform duration-700 ease-out group-hover:scale-[1.15] group-hover:brightness-105`}
             />
           </motion.div>
         </AnimatePresence>
@@ -76,11 +80,11 @@ export function CakeGallery({
         <button
           onClick={() => setZoom(true)}
           aria-label="বড় করে দেখুন"
-          className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-surface/90 opacity-0 shadow-soft transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+          className="absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-surface/95 opacity-0 shadow-lift transition-all duration-300 group-hover:opacity-100 focus-visible:opacity-100 hover:scale-110"
           onMouseEnter={() => expandIcon.current?.startAnimation()}
           onMouseLeave={() => expandIcon.current?.stopAnimation()}
         >
-          <Expand ref={expandIcon} className="h-4 w-4" />
+          <Expand ref={expandIcon} className="h-4 w-4 transition-transform group-hover:rotate-12" />
         </button>
 
         {list.length > 1 && (
@@ -88,20 +92,20 @@ export function CakeGallery({
             <button
               onClick={() => go(-1)}
               aria-label="আগের ছবি"
-              className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-surface/90 opacity-0 shadow-soft transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+              className="absolute left-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-surface/95 opacity-0 shadow-lift transition-all duration-300 group-hover:opacity-100 focus-visible:opacity-100 hover:scale-110"
               onMouseEnter={() => prevIcon.current?.startAnimation()}
               onMouseLeave={() => prevIcon.current?.stopAnimation()}
             >
-              <ChevronLeft ref={prevIcon} className="h-5 w-5" />
+              <ChevronLeft ref={prevIcon} className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
             </button>
             <button
               onClick={() => go(1)}
               aria-label="পরের ছবি"
-              className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-surface/90 opacity-0 shadow-soft transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+              className="absolute right-3 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-surface/95 opacity-0 shadow-lift transition-all duration-300 group-hover:opacity-100 focus-visible:opacity-100 hover:scale-110"
               onMouseEnter={() => nextIcon.current?.startAnimation()}
               onMouseLeave={() => nextIcon.current?.stopAnimation()}
             >
-              <ChevronRight ref={nextIcon} className="h-5 w-5" />
+              <ChevronRight ref={nextIcon} className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </button>
           </>
         )}
@@ -116,7 +120,7 @@ export function CakeGallery({
               aria-label={`ছবি ${i + 1}`}
               aria-current={i === index}
               className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-xl border-2 transition-all ${
-                i === index ? "border-brand opacity-100" : "border-transparent opacity-60 hover:opacity-100"
+                i === index ? "border-brand opacity-100 shadow-lift" : "border-transparent opacity-60 hover:opacity-100 hover:shadow-soft"
               }`}
             >
               <Image
@@ -127,8 +131,11 @@ export function CakeGallery({
                 // The active thumbnail is already on screen with the main
                 // image; only the rest wait until the row scrolls into view.
                 loading={i === index ? "eager" : "lazy"}
-                className={`${fitClass} ${posClass}`}
+                className={`${fitClass} ${posClass} transition-all duration-300 hover:scale-[1.05] hover:brightness-105`}
               />
+              {i === index && (
+                <div className="absolute inset-0 rounded-xl bg-brand/20 animate-pulse" />
+              )}
             </button>
           ))}
         </div>
