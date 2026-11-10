@@ -304,6 +304,21 @@
     color: hsl(var(--fg) / 0.85);
   }
   .prose-bn strong { color: hsl(var(--fg)); }
+  .prose-bn h3 {
+    font-size: 1.12rem;
+    font-weight: 700;
+    margin-top: 1.6rem;
+    margin-bottom: 0.5rem;
+  }
+  .prose-bn ol {
+    list-style: decimal;
+    padding-left: 1.25rem;
+    margin-bottom: 1rem;
+    line-height: 1.9;
+    color: hsl(var(--fg) / 0.85);
+  }
+  .prose-bn li { margin-bottom: 0.3rem; }
+  .prose-bn > :first-child { margin-top: 0; }
 
   .skeleton {
     background: linear-gradient(90deg, hsl(var(--border) / 0.5) 25%, hsl(var(--border) / 0.9) 50%, hsl(var(--border) / 0.5) 75%);

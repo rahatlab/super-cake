@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 
 /**
  * Minimal, dependency-free markdown renderer for blog posts.
@@ -6,36 +7,56 @@ import Link from "next/link";
  * Everything else is rendered as plain text (safe by default — no HTML parsing).
  */
 export function Markdown({ content }: { content: string }) {
-  const blocks = content.replace(/\\n/g, "\n").split(/\n{2,}/);
+  // Windows-authored posts arrive with CRLF — without normalising, the block
+  // split never fires and the whole post renders as a single giant heading.
+  const blocks = content
+    .replace(/\\n/g, "\n")
+    .replace(/\r\n?/g, "\n")
+    .split(/\n{2,}/);
 
   return (
     <div className="prose-bn">
       {blocks.map((raw, i) => {
-        const block = raw.trim();
-        if (!block) return null;
+        const lines = raw
+          .split("\n")
+          .map((l) => l.trim())
+          .filter(Boolean);
+        if (!lines.length) return null;
 
-        if (block.startsWith("## ")) {
-          return <h2 key={i}>{block.slice(3)}</h2>;
+        const parts: React.ReactNode[] = [];
+        let rest = lines;
+
+        const head = lines[0].match(/^(#{1,3}) (.+)$/);
+        if (head) {
+          const Heading = head[1].length === 3 ? "h3" : "h2";
+          parts.push(<Heading key="h">{head[2]}</Heading>);
+          rest = lines.slice(1);
         }
 
-        if (block.startsWith("# ")) {
-          return <h2 key={i}>{block.slice(2)}</h2>;
+        if (rest.length) {
+          const ordered = rest.every((l) => /^\d+[.)]\s/.test(l));
+          const bulleted = rest.every((l) => /^[-*•]\s/.test(l));
+          if (ordered || bulleted) {
+            const List = ordered ? "ol" : "ul";
+            parts.push(
+              <List key="l">
+                {rest.map((l, j) => (
+                  <li key={j}>{inline(l.replace(/^([-*•]|\d+[.)])\s/, ""))}</li>
+                ))}
+              </List>,
+            );
+          } else {
+            parts.push(
+              <p key="p">
+                {rest.map((l, j) => (
+                  <span key={j}>{inline(l)}{" "}</span>
+                ))}
+              </p>,
+            );
+          }
         }
 
-        const lines = block.split("\n").filter(Boolean);
-        const isList = lines.every((l) => /^[-*•]\s/.test(l.trim()) || /^\d+[.)]\s/.test(l.trim()));
-
-        if (isList) {
-          return (
-            <ul key={i}>
-              {lines.map((l, j) => (
-                <li key={j}>{inline(l.trim().replace(/^([-*•]|\d+[.)])\s/, ""))}</li>
-              ))}
-            </ul>
-          );
-        }
-
-        return <p key={i}>{lines.map((l, j) => <span key={j}>{inline(l)}{" "}</span>)}</p>;
+        return <Fragment key={i}>{parts}</Fragment>;
       })}
     </div>
   );
