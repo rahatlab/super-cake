@@ -215,6 +215,13 @@ export const milestoneSchema = z.object({
 
 export const postSchema = z.object({
   title: z.string().min(3, "টাইটেল দিন").max(160),
+  // Optional custom slug — letters/numbers/hyphens only (Bengali allowed).
+  // Empty input is normalised to undefined so the store derives it from the title.
+  slug: z
+    .string()
+    .regex(/^[\p{L}\p{N}-]+$/u, "স্লাগে শুধু অক্ষর, সংখ্যা ও হাইফেন (-) দিন")
+    .max(160)
+    .optional(),
   excerpt: z.string().max(300).default(""),
   content: z.string().min(10, "কন্টেন্ট লিখুন"),
   cover_image: z.string().max(500).optional().nullable(),

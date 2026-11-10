@@ -16,6 +16,7 @@ export function PostForm({ post }: { post?: BlogPost }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(savePostAction, initial);
   const [cover, setCover] = useState(post?.cover_image ?? "");
+  const [slug, setSlug] = useState(post?.slug ?? "");
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const busy = pending || uploading;
@@ -89,6 +90,25 @@ export function PostForm({ post }: { post?: BlogPost }) {
               className="field"
               placeholder="যেমন: নিখুঁত জন্মদিনের কেক বাছাই করার ৫ টি টিপস"
             />
+          </div>
+
+          <div>
+            <label htmlFor="post-slug" className="label">
+              Slug (URL)
+            </label>
+            <input
+              id="post-slug"
+              name="slug"
+              maxLength={160}
+              value={slug}
+              onChange={(e) => setSlug(e.target.value)}
+              className="field"
+              placeholder="যেমন: cake-order-guide"
+              aria-describedby="post-slug-hint"
+            />
+            <p id="post-slug-hint" className="mt-1 font-mono text-[11px] text-muted">
+              /blog/{slug || "…"} — খালি রাখলে টাইটেল থেকে তৈরি হবে; শুধু অক্ষর, সংখ্যা ওহাইফেন (-)
+            </p>
           </div>
 
           <div>

@@ -556,6 +556,7 @@ export async function savePostAction(_prev: ActionState, fd: FormData): Promise<
   const id = String(fd.get("id") ?? "").trim();
   const parsed = postSchema.safeParse({
     title: String(fd.get("title") ?? "").trim(),
+    slug: String(fd.get("slug") ?? "").trim() || undefined,
     excerpt: String(fd.get("excerpt") ?? "").trim(),
     content: String(fd.get("content") ?? ""),
     cover_image: String(fd.get("cover_image") ?? "") || null,
@@ -570,11 +571,13 @@ export async function savePostAction(_prev: ActionState, fd: FormData): Promise<
     if (id) {
       await store.updatePost(id, parsed.data);
       revalidatePath("/admin/blog");
+      revalidatePath("/blog/[slug]", "page");
       revalidatePublic(CACHE_TAGS.posts);
       return { success: "ব্লগ আপডেট হয়েছে" };
     }
     const post = await store.createPost(parsed.data);
     revalidatePath("/admin/blog");
+    revalidatePath("/blog/[slug]", "page");
     revalidatePublic(CACHE_TAGS.posts);
     return { success: "ব্লগ তৈরি হয়েছে", id: post.id };
   } catch (e) {
@@ -587,6 +590,7 @@ export async function deletePostAction(id: string): Promise<ActionState> {
   try {
     await getStore().deletePost(id);
     revalidatePath("/admin/blog");
+    revalidatePath("/blog/[slug]", "page");
     revalidatePublic(CACHE_TAGS.posts);
     return { success: "ব্লগ মুছে ফেলা হয়েছে" };
   } catch (e) {
