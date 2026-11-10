@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffe4ee"/>
+      <stop offset="55%" stop-color="#fff2e6"/>
+      <stop offset="100%" stop-color="#fde8f2"/>
+    </linearGradient>
+    <linearGradient id="pink" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffa9cd"/>
+      <stop offset="1" stop-color="#ff7fb1"/>
+    </linearGradient>
+    <linearGradient id="choc" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8b5a3c"/>
+      <stop offset="1" stop-color="#6d412a"/>
+    </linearGradient>
+    <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fffdf9"/>
+      <stop offset="1" stop-color="#fff1e0"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="12" stdDeviation="16" fill="#d98aa8" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="1060" cy="95" r="95" fill="#ffffff" opacity="0.4"/>
+  <circle cx="640" cy="575" r="75" fill="#ffffff" opacity="0.35"/>
+  <circle cx="130" cy="545" r="85" fill="#ffffff" opacity="0.3"/>
+
+  <!-- sparkles -->
+  <g fill="#ffb3d1">
+    <path d="M700 118 Q702 128 712 130 Q702 132 700 142 Q698 132 688 130 Q698 128 700 118 Z"/>
+    <path d="M1145 175 Q1147 185 1157 187 Q1147 189 1145 199 Q1143 189 1133 187 Q1143 185 1145 175 Z"/>
+    <path d="M655 430 Q657 440 667 442 Q657 444 655 454 Q653 444 643 442 Q653 440 655 430 Z"/>
+    <path d="M975 175 Q977 185 987 187 Q977 189 975 199 Q973 189 963 187 Q973 185 975 175 Z"/>
+  </g>
+
+  <!-- ===== left: title block ===== -->
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <rect x="80" y="100" width="256" height="46" rx="23" fill="#ff5f9e"/>
+    <text x="208" y="131" font-size="19" font-weight="bold" fill="#ffffff" text-anchor="middle" letter-spacing="1.5">STEP-BY-STEP GUIDE</text>
+
+    <text x="80" y="232" font-size="64" font-weight="bold" fill="#4a2b3a">Order Cakes in</text>
+    <text x="80" y="308" font-size="64" font-weight="bold" fill="#ff5f9e">5 Easy Steps</text>
+
+    <rect x="82" y="336" width="120" height="9" rx="5" fill="#ffd66b"/>
+
+    <text x="80" y="398" font-size="27" fill="#7a5c6b">Website &amp; WhatsApp — fast, simple,</text>
+    <text x="80" y="436" font-size="27" fill="#7a5c6b">professional cake ordering.</text>
+
+    <!-- feature pills -->
+    <g font-size="17" font-weight="bold" text-anchor="middle">
+      <rect x="80" y="480" width="132" height="46" rx="23" fill="#ffffff" stroke="#f0b7cd" stroke-width="2"/>
+      <text x="146" y="510" fill="#d1538a">WhatsApp</text>
+      <rect x="226" y="480" width="106" height="46" rx="23" fill="#ffffff" stroke="#f0b7cd" stroke-width="2"/>
+      <text x="279" y="510" fill="#d1538a">bKash</text>
+      <rect x="346" y="480" width="180" height="46" rx="23" fill="#ffffff" stroke="#f0b7cd" stroke-width="2"/>
+      <text x="436" y="510" fill="#d1538a">Cash on Delivery</text>
+    </g>
+  </g>
+
+  <!-- floating cart icon -->
+  <g transform="translate(668,196)" stroke="#ff5f9e" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M0 0 h18 l15 42 h46 l13 -31 h-61"/>
+    <circle cx="38" cy="56" r="7" fill="#ff5f9e" stroke="none"/>
+    <circle cx="72" cy="56" r="7" fill="#ff5f9e" stroke="none"/>
+  </g>
+
+  <!-- ===== right: cake + phone ===== -->
+  <g filter="url(#soft)">
+    <!-- cake stand -->
+    <ellipse cx="872" cy="556" rx="176" ry="24" fill="#ffffff" stroke="#f3c6d6" stroke-width="4"/>
+
+    <!-- bottom layer: chocolate -->
+    <rect x="742" y="440" width="260" height="104" rx="16" fill="url(#choc)"/>
+    <rect x="742" y="432" width="260" height="34" rx="12" fill="url(#pink)"/>
+    <g fill="#ff8fbe">
+      <circle cx="762" cy="464" r="10"/><circle cx="796" cy="464" r="10"/>
+      <circle cx="830" cy="464" r="10"/><circle cx="864" cy="464" r="10"/>
+      <circle cx="898" cy="464" r="10"/><circle cx="932" cy="464" r="10"/>
+      <circle cx="966" cy="464" r="10"/>
+    </g>
+
+    <!-- middle layer: cream -->
+    <rect x="777" y="356" width="190" height="82" rx="14" fill="url(#cream)" stroke="#f7dcc4" stroke-width="2"/>
+    <rect x="777" y="348" width="190" height="30" rx="12" fill="url(#pink)"/>
+    <g fill="#ff8fbe">
+      <circle cx="797" cy="376" r="9"/><circle cx="829" cy="376" r="9"/>
+      <circle cx="861" cy="376" r="9"/><circle cx="893" cy="376" r="9"/>
+      <circle cx="925" cy="376" r="9"/><circle cx="949" cy="376" r="9"/>
+    </g>
+
+    <!-- top layer: pink -->
+    <rect x="812" y="292" width="120" height="64" rx="12" fill="url(#pink)"/>
+    <rect x="812" y="285" width="120" height="26" rx="11" fill="#fffdf9"/>
+    <g fill="#fffdf9">
+      <circle cx="830" cy="309" r="8"/><circle cx="858" cy="309" r="8"/>
+      <circle cx="886" cy="309" r="8"/><circle cx="914" cy="309" r="8"/>
+    </g>
+
+    <!-- cherries -->
+    <g fill="#e8445f">
+      <circle cx="838" cy="276" r="11"/><circle cx="872" cy="272" r="11"/><circle cx="906" cy="276" r="11"/>
+    </g>
+    <g stroke="#5b8c3e" stroke-width="4" fill="none" stroke-linecap="round">
+      <path d="M838 266 q4 -10 12 -12"/><path d="M872 262 q0 -10 6 -14"/><path d="M906 266 q-4 -10 -12 -12"/>
+    </g>
+
+    <!-- candle -->
+    <rect x="866" y="222" width="13" height="52" rx="6" fill="#ffd66b"/>
+    <path d="M872 216 q14 -14 0 -30 q-14 16 0 30 Z" fill="#ff9f43"/>
+  </g>
+
+  <!-- phone with chat -->
+  <g filter="url(#soft)">
+    <rect x="1002" y="268" width="146" height="268" rx="24" fill="#2b2b33"/>
+    <rect x="1012" y="284" width="126" height="236" rx="14" fill="#f4faf6"/>
+    <rect x="1054" y="274" width="42" height="9" rx="5" fill="#1a1a1f"/>
+
+    <!-- chat bubbles -->
+    <rect x="1020" y="300" width="80" height="36" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+    <rect x="1030" y="312" width="52" height="5" rx="3" fill="#cbd5e1"/>
+    <rect x="1030" y="323" width="36" height="5" rx="3" fill="#cbd5e1"/>
+
+    <rect x="1042" y="348" width="88" height="36" rx="12" fill="#25d366"/>
+    <rect x="1052" y="360" width="58" height="5" rx="3" fill="#ffffff" opacity="0.9"/>
+    <rect x="1052" y="371" width="40" height="5" rx="3" fill="#ffffff" opacity="0.9"/>
+
+    <rect x="1020" y="396" width="70" height="34" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+    <rect x="1030" y="409" width="44" height="5" rx="3" fill="#cbd5e1"/>
+
+    <!-- mini cake thumbnail in bubble -->
+    <rect x="1042" y="442" width="88" height="40" rx="12" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"/>
+    <g transform="translate(1052,450) scale(0.32)">
+      <rect x="0" y="46" width="150" height="54" rx="8" fill="#8b5a3c"/>
+      <rect x="0" y="38" width="150" height="18" rx="7" fill="#ff7fb1"/>
+      <rect x="24" y="0" width="102" height="42" rx="8" fill="#fff1e0"/>
+      <rect x="24" y="-6" width="102" height="16" rx="7" fill="#ff7fb1"/>
+    </g>
+    <rect x="1100" y="454" width="22" height="5" rx="3" fill="#cbd5e1"/>
+    <rect x="1100" y="465" width="16" height="5" rx="3" fill="#cbd5e1"/>
+
+    <!-- input bar -->
+    <rect x="1020" y="492" width="88" height="22" rx="11" fill="#e9f2ec"/>
+    <circle cx="1122" cy="503" r="12" fill="#25d366"/>
+    <path d="M1117 503 h10 M1123 499 l4 4 -4 4" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>
