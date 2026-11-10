@@ -3,6 +3,7 @@
 import { useEffect, useState, useActionState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 import { Cancel01, ImageAdd01, Loading01, Save } from "@animateicons/react/huge";
 import { savePostAction, uploadImagesAction, type ActionState } from "@/lib/actions/admin";
 import type { BlogPost } from "@/lib/types";
@@ -26,15 +27,13 @@ export function PostForm({ post }: { post?: BlogPost }) {
   const uploadIcon = useAnimIcon();
 
   useEffect(() => {
-    if (!state.success) return;
-    if (post) {
-      router.refresh();
-    } else if (state.id) {
-      router.push(`/admin/blog/${state.id}/edit`);
-    } else {
+    if (state.success) {
+      toast.success(state.success);
       router.push("/admin/blog");
+    } else if (state.error) {
+      toast.error(state.error);
     }
-  }, [state.success, state.id, post, router]);
+  }, [state, router]);
 
   async function onPickCover(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -63,11 +62,6 @@ export function PostForm({ post }: { post?: BlogPost }) {
         {state.error && (
           <p role="alert" className="rounded-xl bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">
             <AnimIcon name="alert" className="h-4 w-4 shrink-0" /> {state.error}
-          </p>
-        )}
-        {state.success && (
-          <p role="status" className="rounded-xl bg-success/10 px-3 py-2 text-sm font-semibold text-success">
-            <AnimIcon name="check" className="h-4 w-4 shrink-0" /> {state.success}
           </p>
         )}
         <OrderLoadingOverlay
