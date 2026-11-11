@@ -226,15 +226,22 @@ export function CakePurchase({
       </div>
 
       <ul className="space-y-1.5 border-t border-line pt-4 text-[13px] text-muted">
-        <li>
+        <li className="flex items-center gap-1.5">
+          <AnimIcon name="delivery" className="h-4 w-4 shrink-0" />
           {deliveryCharge <= 0 || (freeDeliveryEnabled && freeDeliveryMin <= 0)
-            ? "🚚 ডেলিভারি সম্পূর্ণ ফ্রি"
+            ? "ডেলিভারি সম্পূর্ণ ফ্রি"
             : freeDeliveryEnabled && freeDeliveryMin > 0
-              ? `🚚 ডেলিভারি ${formatBDT(deliveryCharge)} — ${formatBDT(freeDeliveryMin)}+ অর্ডারে ফ্রি`
-              : `🚚 ডেলিভারি চার্জ ${formatBDT(deliveryCharge)} — পরের step এ যোগ হবে`}
+              ? `ডেলিভারি ${formatBDT(deliveryCharge)} — ${formatBDT(freeDeliveryMin)}+ অর্ডারে ফ্রি`
+              : `ডেলিভারি চার্জ ${formatBDT(deliveryCharge)} — পরের step এ যোগ হবে`}
         </li>
-        <li><AnimIcon name="card" className="h-4 w-4 shrink-0" /> Cash on Delivery বা bKash — দুটোই চলবে</li>
-        <li><AnimIcon name="edit" className="h-4 w-4 shrink-0" /> Message on cake ও design note অর্ডারের সময় দিতে পারবেন</li>
+        <li className="flex items-center gap-1.5">
+          <AnimIcon name="card" className="h-4 w-4 shrink-0" />
+          Cash on Delivery, Mobile Banking বা bKash — দুটোই চলবে
+        </li>
+        <li className="flex items-center gap-1.5">
+          <AnimIcon name="edit" className="h-4 w-4 shrink-0" />
+          Message on cake ও design note অর্ডারের সময় দিতে পারবেন
+        </li>
       </ul>
     </div>
   );
