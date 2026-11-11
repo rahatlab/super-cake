@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, Clock, Home, Loader2, SearchCheck } from "lucide-react";
+import { AlertTriangle, Clock, Home, SearchCheck } from "lucide-react";
 import { createOrderAccessToken } from "@/lib/auth";
 import { settlePayStationOrder } from "@/lib/paystation";
 import { ORDER_NO_RE } from "@/lib/utils";
+import PaymentCallbackLoading from "./loading";
 
 export const metadata: Metadata = {
   title: "পেমেন্ট যাচাই",
@@ -44,20 +45,16 @@ function Notice({
   tone,
   title,
   body,
-  refresh,
   children,
 }: {
   icon: ReactNode;
   tone: string;
   title: string;
   body: string;
-  refresh?: boolean;
   children?: ReactNode;
 }) {
   return (
     <div className="container-page py-16">
-      {/* Auto re-verify while the gateway is still settling. */}
-      {refresh ? <meta httpEquiv="refresh" content="3" /> : null}
       <div className="card mx-auto max-w-lg p-8 text-center">
         <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${tone}`}>
           {icon}
@@ -127,14 +124,13 @@ export default async function PayStationCallbackPage({
   }
 
   if (result.reason === "processing" || result.reason === "api_error" || result.reason === "not_configured") {
+    // Same overlay as the initial load, so the auto-retry refresh (every 3s)
+    // never flickers between two different screens.
     return (
-      <Notice
-        icon={<Loader2 className="h-7 w-7 animate-spin" />}
-        tone="bg-brand/10 text-brand"
-        title="পেমেন্ট যাচাই চলছে…"
-        body={`অর্ডার ${invoice} এর পেমেন্টের ফলাফল যাচাই করা হচ্ছে। এই পেজটি কয়েক সেকেন্ড পর নিজে থেকেই আপডেট হবে।`}
-        refresh
-      />
+      <>
+        <meta httpEquiv="refresh" content="3" />
+        <PaymentCallbackLoading />
+      </>
     );
   }
 
