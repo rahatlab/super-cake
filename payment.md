@@ -142,7 +142,7 @@ URL: https://api.paystation.com.bd/initiate-payment
 | `reference` | string | Optional | Reference information for the transaction. Example: `Some Ref Info` |
 | `cust_name` | string | Required | Customer's full name. Example: `MM` |
 | `cust_phone` | string | Required | Customer's phone number. Example: `01726315133` |
-| `cust_email` | string | Required | Customer's email address. Example: `mm@mm.com` |
+| `cust_email` | string | Required | Customer's email address. Example: `[email protected]` |
 | `cust_address` | string | Optional | Customer's physical address. Example: `Customer address` |
 | `callback_url` | string (URL) | Required | URL to receive transaction status updates. Example: `https://api.paystation.com.bd/payment-success/104` |
 | `checkout_items` | string / JSON | Optional | Details of the purchased items. Example: `Some text or JSON` |
@@ -163,7 +163,7 @@ curl -X POST https://api.paystation.com.bd/initiate-payment \
   -d "reference=Some Ref Info" \
   -d "cust_name=MM" \
   -d "cust_phone=01726315133" \
-  -d "cust_email=mm@mm.com" \
+  -d "[[email protected]](https://www.paystation.com.bd/cdn-cgi/l/email-protection)" \
   -d "cust_address=Customer address" \
   -d "callback_url=https://api.paystation.com.bd/payment-success/104" \
   -d "checkout_items=Some text or JSON"
