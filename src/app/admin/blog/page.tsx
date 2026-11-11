@@ -77,7 +77,7 @@ export default async function AdminBlogPage({
                 <tr key={p.id} className="align-top transition-colors hover:bg-fg/[0.03]">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <span className="relative h-12 w-16 shrink-0 overflow-hidden rounded-lg bg-brand/10">
+                      <span className="relative grid h-12 w-16 shrink-0 place-items-center overflow-hidden rounded-lg bg-brand/10">
                         {p.cover_image ? (
                           <Image
                             src={p.cover_image}

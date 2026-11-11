@@ -320,6 +320,12 @@
   .prose-bn li { margin-bottom: 0.3rem; }
   .prose-bn > :first-child { margin-top: 0; }
 
+  /* Inline icons sit on the text baseline, which drops them below the line
+     (emoji-sized headings look fine). Flex/grid children ignore this. */
+  :where(p, li, dd, dt, span, strong, label, td, div, a, button) svg {
+    vertical-align: middle;
+  }
+
   .skeleton {
     background: linear-gradient(90deg, hsl(var(--border) / 0.5) 25%, hsl(var(--border) / 0.9) 50%, hsl(var(--border) / 0.5) 75%);
     background-size: 200% 100%;

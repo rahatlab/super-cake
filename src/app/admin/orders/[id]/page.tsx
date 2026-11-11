@@ -329,8 +329,9 @@ export default async function AdminOrderDetailPage({
             )}
 
             {order.payment_status === "paid" && order.order_status === "pending" && (
-              <p className="mt-3 rounded-xl bg-success/10 px-3 py-2 text-xs font-semibold text-success">
-                পেমেন্ট ভেরিফাইড — অর্ডার অটো কনফার্ম হয়েছে <AnimIcon name="check" className="h-4 w-4 shrink-0" />
+              <p className="mt-3 flex items-center gap-1.5 rounded-xl bg-success/10 px-3 py-2 text-xs font-semibold text-success">
+                পেমেন্ট ভেরিফাইড — অর্ডার অটো কনফার্ম হয়েছে{" "}
+                <AnimIcon name="check" className="h-4 w-4 shrink-0" />
               </p>
             )}
 
@@ -341,8 +342,9 @@ export default async function AdminOrderDetailPage({
             )}
 
             {order.payment_method === "cod" && order.order_status === "completed" && (
-              <p className="mt-3 rounded-xl bg-success/10 px-3 py-2 text-xs font-semibold text-success">
-                Cash on Delivery — টাকা সংগ্রহ সম্পন্ন হয়েছে <AnimIcon name="check" className="h-4 w-4 shrink-0" />
+              <p className="mt-3 flex items-center gap-1.5 rounded-xl bg-success/10 px-3 py-2 text-xs font-semibold text-success">
+                Cash on Delivery — টাকা সংগ্রহ সম্পন্ন হয়েছে{" "}
+                <AnimIcon name="check" className="h-4 w-4 shrink-0" />
               </p>
             )}
           </section>
